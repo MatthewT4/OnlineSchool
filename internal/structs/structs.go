@@ -17,3 +17,14 @@ type Course struct {
 	PaymentPeriod map[int]time.Time `bson:"payment_period"`
 	Сontacts      map[string]string `bson:"сontacts"`
 }
+type Webinar struct {
+	Name         string
+	MeetDate     time.Time
+	WebinarId    int
+	CourseId     int
+	SpeakerId    int
+	WebLink      string
+	Recordlink   string
+	Conspect     string
+	Presentation string
+}

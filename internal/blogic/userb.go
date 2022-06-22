@@ -30,7 +30,6 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 					max = res[i].BuyPeriod[j]
 				}
 			}
-			fmt.Println(max)
 			var c resCourses
 			c.NameCourse = course.NameCourse
 			c.PaymentEnd = course.PaymentPeriod[max]
@@ -49,6 +48,5 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 		return 404, "not found"
 		log.Fatal(err)
 	}
-	fmt.Println(string(jr))
 	return 200, string(jr)
 }
