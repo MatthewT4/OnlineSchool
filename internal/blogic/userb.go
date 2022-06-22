@@ -1,35 +1,54 @@
 package blogic
 
 import (
-	"OnlineSchool/internal/DataBase"
 	"context"
 	"encoding/json"
 	"fmt"
-	"go.mongodb.org/mongo-driver/mongo"
 	"log"
+	"time"
 )
 
-type BUser struct {
-	DBUser DataBase.IUserDB
-}
-
-func NewBUser(db *mongo.Database) *BUser {
-	return &BUser{DBUser: DataBase.NewUserDB(db)}
-}
-
-type IBUser interface {
-	GetCouses(user_id int) (int, string)
-}
-
-func (b *BUser) GetCouses(user_id int) (int, string) {
+func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 	res, err := b.DBUser.GetCourses(context.TODO(), user_id)
 	if err != nil {
 		fmt.Println(err.Error())
 		return 404, "not found"
 	}
-	jr, err := json.Marshal(res)
+	type resCourses struct {
+		NameCourse string    `json:"name_course"`
+		PaymentEnd time.Time `json:"payment_end"`
+	}
+
+	var mas []resCourses
+	for i := 0; i < len(res); i++ {
+		course, er := b.DBCourse.GetCourse(context.TODO(), res[i].CourseId)
+		if er == nil {
+			//find max payment period
+			max := 0
+			for j := 0; j < len(res[i].BuyPeriod); j++ {
+				if max < res[i].BuyPeriod[j] {
+					max = res[i].BuyPeriod[j]
+				}
+			}
+			fmt.Println(max)
+			var c resCourses
+			c.NameCourse = course.NameCourse
+			c.PaymentEnd = course.PaymentPeriod[max]
+			fmt.Println(c)
+			mas = append(mas, c)
+		} else {
+			return 404, "not found"
+			fmt.Println(err.Error())
+		}
+	}
+	if len(mas) == 0 {
+		return 404, "not found"
+	}
+	jr, err := json.Marshal(mas)
 	if err != nil {
+		return 404, "not found"
 		log.Fatal(err)
 	}
+	fmt.Println(string(jr))
 	return 200, string(jr)
 }

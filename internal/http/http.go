@@ -10,11 +10,11 @@ import (
 )
 
 type Router struct {
-	BLUser blogic.IBUser
+	BLogic blogic.IBLogic
 }
 
 func NewRouter(db *mongo.Database) *Router {
-	return &Router{BLUser: blogic.NewBUser(db)}
+	return &Router{BLogic: blogic.NewBLogic(db)}
 }
 
 func (r *Router) Start() {
