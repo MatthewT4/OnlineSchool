@@ -1,11 +1,8 @@
 package structs
 
-import "time"
-
 type Course struct {
-	CourseId  int       `bson:"course_id"`
-	BuyPeriod int       `bson:"buy_period"`
-	PeriodEnd time.Time `bson:"period_end"`
+	CourseId  int   `bson:"course_id" json:"course_id"`
+	BuyPeriod []int `bson:"buy_period" json:"buy_period"`
 }
 type User struct {
 	UserId     int      `bson:"user_id"`

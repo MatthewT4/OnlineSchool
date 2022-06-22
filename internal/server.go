@@ -1,7 +1,7 @@
 package internal
 
 import (
-	db2 "OnlineSchool/internal/DataBase"
+	"OnlineSchool/internal/http"
 	"context"
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -25,7 +25,11 @@ func StartServer() {
 	fmt.Println("Connected to MongoDB!")
 	name := "test"
 	db := client.Database(name)
-	d := db2.NewUserDB(db)
+	/*d := db2.NewUserDB(db)
 	d.GetCourses(context.TODO(), 1)
-
+	logic := blogic.NewBUser(db)
+	code, res :=logic.GetCouses(1)
+	fmt.Println(code, res)*/
+	router := http.NewRouter(db)
+	router.Start()
 }
