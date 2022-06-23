@@ -1,6 +1,7 @@
 package blogic
 
 import (
+	"OnlineSchool/internal/structs"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,13 +19,10 @@ type retWebinar struct {
 	Presentation string    `json:"presentation,omitempty"`
 }
 
-func (b *BLogic) checkUserCourse(user_id int, course_id int) bool {
-	res, err := b.DBUser.GetCourses(context.TODO(), user_id)
-	if err != nil {
-		return false
-	}
-	for i := 0; i < len(res); i++ {
-		if course_id == res[i].CourseId {
+//return bool and int (number last payment period)
+func (b *BLogic) checkUserCourse(courses []structs.UserCourse, courseId int) bool {
+	for i := 0; i < len(courses); i++ {
+		if courseId == courses[i].CourseId {
 			return true
 		}
 	}
@@ -75,7 +73,11 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 }
 
 func (b *BLogic) GetNextWebinars(userId int, courseId int) (int, string) {
-	if !b.checkUserCourse(userId, courseId) {
+	res, err := b.DBUser.GetCourses(context.TODO(), userId)
+	if err != nil {
+		return 404, "not found"
+	}
+	if !b.checkUserCourse(res, courseId) {
 		return 404, "not found"
 	}
 	start_time := time.Now()
@@ -86,12 +88,16 @@ func (b *BLogic) GetNextWebinars(userId int, courseId int) (int, string) {
 		return 404, "time parse error"
 	}
 	end_time := time.Now().Add(time.Hour * 24 * 365 * 2)
-	res, err := b.getWebinars(start_time, end_time, courseId)
-	if err != nil {
-		fmt.Println(err)
+	dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, courseId)
+	if errorr != nil {
+		return 500, errorr.Error()
+	}
+	result, er := b.getWebinars(start_time, end_time, courseId, dateLastPaymentPeriod)
+	if er != nil {
+		fmt.Println(er.Error())
 		return 404, "not found"
 	}
-	re, erro := json.Marshal(&res)
+	re, erro := json.Marshal(&result)
 	if erro != nil {
 		fmt.Println(erro)
 		return 500, "json marshal fail"
@@ -100,17 +106,25 @@ func (b *BLogic) GetNextWebinars(userId int, courseId int) (int, string) {
 }
 
 func (b *BLogic) GetPastWebinars(userId int, courseId int) (int, string) {
-	if !b.checkUserCourse(userId, courseId) {
+	res, err := b.DBUser.GetCourses(context.TODO(), userId)
+	if err != nil {
+		return 404, "not found"
+	}
+	if !b.checkUserCourse(res, courseId) {
 		return 404, "not found"
 	}
 	endTime := time.Now()
 	startTime := time.Now().Add(-time.Hour * 24 * 365 * 2)
-	res, err := b.getWebinars(startTime, endTime, courseId)
+	dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, courseId)
+	if errorr != nil {
+		return 500, errorr.Error()
+	}
+	result, err := b.getWebinars(startTime, endTime, courseId, dateLastPaymentPeriod)
 	if err != nil {
 		fmt.Println(err)
 		return 404, "not found"
 	}
-	re, erro := json.Marshal(&res)
+	re, erro := json.Marshal(&result)
 	if erro != nil {
 		fmt.Println(erro)
 		return 500, "json marshal fail"
@@ -134,9 +148,13 @@ func (b *BLogic) GetTodayWebinars(userId int) (int, string) {
 	}
 	var mas []retWebinar
 	for i := 0; i < len(res); i++ {
-		re, er := b.getWebinars(startTime, endTime, res[i].CourseId)
-		if er != nil {
-			fmt.Println(er.Error())
+		dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, res[i].CourseId)
+		if errorr != nil {
+			return 500, errorr.Error()
+		}
+		re, erro := b.getWebinars(startTime, endTime, res[i].CourseId, dateLastPaymentPeriod)
+		if erro != nil {
+			fmt.Println(erro.Error())
 			return 404, "not found"
 		}
 		mas = append(mas, re...)
@@ -149,7 +167,7 @@ func (b *BLogic) GetTodayWebinars(userId int) (int, string) {
 	return 200, string(re)
 }
 
-func (b *BLogic) getWebinars(start_time time.Time, end_time time.Time, courseId int) ([]retWebinar, error) {
+func (b *BLogic) getWebinars(start_time time.Time, end_time time.Time, courseId int, endLastPaymentPeriod time.Time) ([]retWebinar, error) {
 	res, err := b.DBWebinar.GetWebinars(context.TODO(), start_time, end_time, courseId)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -160,14 +178,35 @@ func (b *BLogic) getWebinars(start_time time.Time, end_time time.Time, courseId 
 		var webinar retWebinar
 		webinar.Name = res[i].Name
 		webinar.MeetDate = res[i].MeetDate.Local()
-		webinar.WebinarId = res[i].WebinarId
-		webinar.RecordLink = res[i].RecordLink
-		webinar.Conspect = res[i].Conspect
-		webinar.Presentation = res[i].Presentation
+		if webinar.MeetDate.Before(endLastPaymentPeriod) { // not return if date webinar > date last payment period
+			webinar.WebinarId = res[i].WebinarId
+			webinar.RecordLink = res[i].RecordLink
+			webinar.Conspect = res[i].Conspect
+			webinar.Presentation = res[i].Presentation
+		}
 		if res[i].Live {
 			webinar.WebLink = res[i].WebLink
 		}
 		mas = append(mas, webinar)
 	}
 	return mas, nil
+}
+
+func (b *BLogic) getDateLastPaymentPeriod(courses []structs.UserCourse, courseId int) (time.Time, error) {
+	maxx_period := 0
+	for i := 0; i < len(courses); i++ {
+		if courses[i].CourseId == courseId {
+			for j := 0; j < len(courses[i].BuyPeriod); j++ {
+				if maxx_period < courses[i].BuyPeriod[j] {
+					maxx_period = courses[i].BuyPeriod[j]
+				}
+			}
+		}
+	}
+	cour, errorr := b.DBCourse.GetCourse(context.TODO(), courseId)
+	if errorr != nil {
+		return time.Now(), fmt.Errorf("server error")
+	}
+	dateLstPaymentPeriod := cour.PaymentPeriod[maxx_period]
+	return dateLstPaymentPeriod, nil
 }
