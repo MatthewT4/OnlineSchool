@@ -18,13 +18,14 @@ type Course struct {
 	Сontacts      map[string]string `bson:"сontacts"`
 }
 type Webinar struct {
-	Name         string
-	MeetDate     time.Time
-	WebinarId    int
-	CourseId     int
-	SpeakerId    int
-	WebLink      string
-	Recordlink   string
-	Conspect     string
-	Presentation string
+	Name         string    `bson:"name"`
+	MeetDate     time.Time `bson:"meet_date"`
+	WebinarId    int       `bson:"webinar_id"`
+	CourseId     int       `bson:"course_id"`
+	SpeakerId    int       `bson:"speaker_id"`
+	WebLink      string    `bson:"web_link"`
+	RecordLink   string    `bson:"record_link"`
+	Conspect     string    `bson:"conspect"`
+	Presentation string    `bson:"presentation"`
+	Live         bool      `bson:"live"`
 }

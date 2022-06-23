@@ -8,6 +8,19 @@ import (
 	"time"
 )
 
+func (b *BLogic) checkUserCourse(user_id int, course_id int) bool {
+	res, err := b.DBUser.GetCourses(context.TODO(), user_id)
+	if err != nil {
+		return false
+	}
+	for i := 0; i < len(res); i++ {
+		if course_id == res[i].CourseId {
+			return true
+		}
+	}
+	return false
+}
+
 func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 	res, err := b.DBUser.GetCourses(context.TODO(), user_id)
 	if err != nil {
@@ -49,4 +62,54 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 		log.Fatal(err)
 	}
 	return 200, string(jr)
+}
+
+func (b *BLogic) GetNextWebinars(user_id int, course_id int) (int, string) {
+	if !b.checkUserCourse(user_id, course_id) {
+		return 404, "not found"
+	}
+	start_time := time.Now()
+	r := start_time.Format("2006-01-02")
+	var er error
+	start_time, er = time.Parse("2006-01-02", r)
+	if er != nil {
+		return 404, "time parse error"
+	}
+	fmt.Println(start_time)
+	end_time := time.Now().Add(time.Hour * 24 * 365 * 2)
+	res, err := b.DBWebinar.GetWebinars(context.TODO(), start_time, end_time)
+	if err != nil {
+		fmt.Println(err.Error())
+		return 404, "not found"
+	}
+	fmt.Println(res)
+	type retWebinar struct {
+		Name         string    `json:"name"`
+		MeetDate     time.Time `json:"meet_date"`
+		WebinarId    int       `json:"webinar_id"`
+		WebLink      string    `json:"web_link,omitempty"`
+		RecordLink   string    `json:"record_link,omitempty"`
+		Conspect     string    `json:"conspect,omitempty"`
+		Presentation string    `json:"presentation,omitempty"`
+	}
+	var mas []retWebinar
+	for i := 0; i < len(res); i++ {
+		var webinar retWebinar
+		webinar.Name = res[i].Name
+		webinar.MeetDate = res[i].MeetDate.Local()
+		webinar.WebinarId = res[i].WebinarId
+		webinar.RecordLink = res[i].RecordLink
+		webinar.Conspect = res[i].Conspect
+		webinar.Presentation = res[i].Presentation
+		if res[i].Live {
+			webinar.WebLink = res[i].WebLink
+		}
+		mas = append(mas, webinar)
+	}
+	re, erro := json.Marshal(mas)
+	if err != nil {
+		fmt.Println(erro)
+		return 404, "not found"
+	}
+	return 200, string(re)
 }
