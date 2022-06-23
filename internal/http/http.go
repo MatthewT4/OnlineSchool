@@ -21,6 +21,8 @@ func (r *Router) Start() {
 	rou := mux.NewRouter()
 	rou.HandleFunc("/get_courses", r.GetCourses)
 	rou.HandleFunc("/get_next_webinars", r.GetNextWebinars)
+	rou.HandleFunc("/get_today_webinars", r.GetTodayWebinars)
+	rou.HandleFunc("/get_past_webinars", r.GetPastWebinars)
 
 	rou.Use(r.UserAuthentication)
 

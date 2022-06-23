@@ -12,7 +12,7 @@ type WebinarDB struct {
 	collection *mongo.Collection
 }
 type IWebinarDB interface {
-	GetWebinars(ctx context.Context, start time.Time, end time.Time) ([]structs.Webinar, error)
+	GetWebinars(ctx context.Context, start time.Time, end time.Time, courseId int) ([]structs.Webinar, error)
 }
 
 func NewWebinarDB(db *mongo.Database) *WebinarDB {
@@ -20,12 +20,13 @@ func NewWebinarDB(db *mongo.Database) *WebinarDB {
 }
 
 //Return array webinars from start to end date
-func (w *WebinarDB) GetWebinars(ctx context.Context, start time.Time, end time.Time) ([]structs.Webinar, error) {
+func (w *WebinarDB) GetWebinars(ctx context.Context, start time.Time, end time.Time, courseId int) ([]structs.Webinar, error) {
 	filter := bson.D{
 		{"meet_date", bson.M{
 			"$gte": start,
 			"$lte": end,
 		}},
+		{"course_id", courseId},
 	}
 	var mas []structs.Webinar
 	cur, err := w.collection.Find(ctx, filter)

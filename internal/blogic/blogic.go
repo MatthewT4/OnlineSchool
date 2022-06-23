@@ -18,4 +18,6 @@ func NewBLogic(db *mongo.Database) *BLogic {
 type IBLogic interface {
 	GetUserCourses(user_id int) (int, string)
 	GetNextWebinars(user_id int, course_id int) (int, string)
+	GetPastWebinars(user_id int, course_id int) (int, string)
+	GetTodayWebinars(user_id int) (int, string)
 }
