@@ -29,3 +29,14 @@ type Webinar struct {
 	Presentation string    `bson:"presentation"`
 	Live         bool      `bson:"live"`
 }
+
+type Task struct {
+	TaskId      int64    `bson:"task_id"`
+	CourseName  string   `bson:"course_name"`
+	Text        string   `bson:"text"`
+	File        []string `bson:"file,omitempty"`
+	Answers     []string `bson:"answers"`
+	Solution    string   `bson:"solution,omitempty"`
+	Written     bool     `bson:"written"`
+	TypeAnswers string   `bson:"type_answers,omitempty"`
+}
