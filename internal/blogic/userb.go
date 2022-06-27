@@ -41,6 +41,8 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 	}
 
 	var mas []resCourses
+	fmt.Println(len(res))
+	fmt.Println(res)
 	for i := 0; i < len(res); i++ {
 		course, er := b.DBCourse.GetCourse(context.TODO(), res[i].CourseId)
 		if er == nil {
@@ -58,7 +60,6 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 			mas = append(mas, c)
 		} else {
 			return 404, "not found"
-			fmt.Println(err.Error())
 		}
 	}
 	if len(mas) == 0 {
@@ -209,4 +210,38 @@ func (b *BLogic) getDateLastPaymentPeriod(courses []structs.UserCourse, courseId
 	}
 	dateLstPaymentPeriod := cour.PaymentPeriod[maxx_period]
 	return dateLstPaymentPeriod, nil
+}
+
+func (b *BLogic) GetHomework(userId int, courseId int, homeworkId int) (int, []byte) {
+	res, err := b.DBHomework.GetHomework(context.TODO(), userId, courseId, homeworkId)
+	if err != nil {
+		return 404, []byte("not found")
+	}
+	if res.PublicDate.After(time.Now()) {
+		fmt.Println("hw before time.now")
+		return 404, []byte("not found")
+	}
+	var hw struct {
+		HomeworkName string                 `json:"homework_name"`
+		Deadline     time.Time              `json:"deadline"`
+		HomeworkId   int                    `json:"homework_id"`
+		Tasks        []structs.HomeworkTask `json:"tasks"`
+		Result       int                    `json:"result,omitempty"`
+		MaxPoints    int                    `json:"max_points"`
+		Delivered    time.Time              `json:"delivered,omitempty"`
+	}
+
+	hw.HomeworkName = res.HomeworkName
+	hw.Deadline = res.Deadline
+	hw.HomeworkId = res.HomeworkId
+	hw.Tasks = res.Tasks
+	hw.MaxPoints = res.MaxPoints
+	hw.Result = res.Result
+	hw.Delivered = res.Delivered
+
+	js, er := json.Marshal(&hw)
+	if er != nil {
+		return 500, []byte("Server error")
+	}
+	return 200, js
 }

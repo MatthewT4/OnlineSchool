@@ -31,7 +31,7 @@ type Webinar struct {
 }
 
 type Task struct {
-	TaskId      int64    `bson:"task_id"`
+	TaskId      int      `bson:"task_id"`
 	CourseName  string   `bson:"course_name"`
 	Text        string   `bson:"text"`
 	File        []string `bson:"file,omitempty"`
@@ -39,4 +39,24 @@ type Task struct {
 	Solution    string   `bson:"solution,omitempty"`
 	Written     bool     `bson:"written"`
 	TypeAnswers string   `bson:"type_answers,omitempty"`
+}
+
+type HomeworkTask struct {
+	TaskId     int    `bson:"task_id" json:"task_id"`
+	UserAnswer string `bson:"user_answer" json:"user_answer"`
+	MaxPoint   int    `bson:"max_point" json:"max_point"`
+	Point      int    `bson:"point,omitempty" json:"point,omitempty"`
+}
+
+type Homework struct {
+	HomeworkName string         `bson:"homework_name"`
+	PublicDate   time.Time      `bson:"public_date"`
+	Deadline     time.Time      `bson:"deadline"`
+	CourseId     int            `bson:"course_id"`
+	OwnerId      int            `bson:"owner_id"`
+	HomeworkId   int            `bson:"homework_id"`
+	Tasks        []HomeworkTask `bson:"tasks"`
+	Result       int            `bson:"result,omitempty"`
+	MaxPoints    int            `bson:"max_points"`
+	Delivered    time.Time      `bson:"delivered,omitempty"`
 }

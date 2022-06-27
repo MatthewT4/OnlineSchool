@@ -26,8 +26,9 @@ func (rou *Router) UserAuthentication(next http.Handler) http.Handler {
 			r = r.WithContext(ctxt)
 			next.ServeHTTP(w, r)
 		}*/
-		user_id := 1
-		ctxt := context.WithValue(r.Context(), UserId, user_id)
+		var userId int
+		userId = 1
+		ctxt := context.WithValue(r.Context(), UserId, userId)
 		r = r.WithContext(ctxt)
 		next.ServeHTTP(w, r)
 
