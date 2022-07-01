@@ -46,17 +46,26 @@ type HomeworkTask struct {
 	UserAnswer string `bson:"user_answer" json:"user_answer"`
 	MaxPoint   int    `bson:"max_point" json:"max_point"`
 	Point      int    `bson:"point,omitempty" json:"point,omitempty"`
+	Number     int    `bson:"number" json:"number"`
 }
 
-type Homework struct {
+type HomeworkSave struct {
+	CourseId   int            `bson:"course_id"`
+	OwnerId    int            `bson:"owner_id"`
+	HomeworkId int            `bson:"homework_id"`
+	Tasks      []HomeworkTask `bson:"tasks"`
+	Result     int            `bson:"result,omitempty"`
+	MaxPoints  int            `bson:"max_points"`
+	Delivered  time.Time      `bson:"delivered,omitempty"`
+	Handed     bool           `bson:"handed"`
+}
+
+type HomeworkTemplate struct {
 	HomeworkName string         `bson:"homework_name"`
 	PublicDate   time.Time      `bson:"public_date"`
 	Deadline     time.Time      `bson:"deadline"`
 	CourseId     int            `bson:"course_id"`
-	OwnerId      int            `bson:"owner_id"`
 	HomeworkId   int            `bson:"homework_id"`
 	Tasks        []HomeworkTask `bson:"tasks"`
-	Result       int            `bson:"result,omitempty"`
 	MaxPoints    int            `bson:"max_points"`
-	Delivered    time.Time      `bson:"delivered,omitempty"`
 }

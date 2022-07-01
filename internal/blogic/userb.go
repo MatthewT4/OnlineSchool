@@ -38,6 +38,7 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 	type resCourses struct {
 		NameCourse string    `json:"name_course"`
 		PaymentEnd time.Time `json:"payment_end"`
+		CourseId   int       `json:"course_id"`
 	}
 
 	var mas []resCourses
@@ -56,6 +57,7 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 			var c resCourses
 			c.NameCourse = course.NameCourse
 			c.PaymentEnd = course.PaymentPeriod[max]
+			c.CourseId = course.CourseId
 			fmt.Println(c)
 			mas = append(mas, c)
 		} else {
@@ -160,11 +162,15 @@ func (b *BLogic) GetTodayWebinars(userId int) (int, string) {
 		}
 		mas = append(mas, re...)
 	}
+	if len(mas) == 0 {
+		return 404, "not found"
+	}
 	re, erro := json.Marshal(&mas)
 	if err != nil {
 		fmt.Println(erro)
 		return 404, "not found"
 	}
+
 	return 200, string(re)
 }
 
@@ -210,38 +216,4 @@ func (b *BLogic) getDateLastPaymentPeriod(courses []structs.UserCourse, courseId
 	}
 	dateLstPaymentPeriod := cour.PaymentPeriod[maxx_period]
 	return dateLstPaymentPeriod, nil
-}
-
-func (b *BLogic) GetHomework(userId int, courseId int, homeworkId int) (int, []byte) {
-	res, err := b.DBHomework.GetHomework(context.TODO(), userId, courseId, homeworkId)
-	if err != nil {
-		return 404, []byte("not found")
-	}
-	if res.PublicDate.After(time.Now()) {
-		fmt.Println("hw before time.now")
-		return 404, []byte("not found")
-	}
-	var hw struct {
-		HomeworkName string                 `json:"homework_name"`
-		Deadline     time.Time              `json:"deadline"`
-		HomeworkId   int                    `json:"homework_id"`
-		Tasks        []structs.HomeworkTask `json:"tasks"`
-		Result       int                    `json:"result,omitempty"`
-		MaxPoints    int                    `json:"max_points"`
-		Delivered    time.Time              `json:"delivered,omitempty"`
-	}
-
-	hw.HomeworkName = res.HomeworkName
-	hw.Deadline = res.Deadline
-	hw.HomeworkId = res.HomeworkId
-	hw.Tasks = res.Tasks
-	hw.MaxPoints = res.MaxPoints
-	hw.Result = res.Result
-	hw.Delivered = res.Delivered
-
-	js, er := json.Marshal(&hw)
-	if er != nil {
-		return 500, []byte("Server error")
-	}
-	return 200, js
 }

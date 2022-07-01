@@ -1,8 +1,9 @@
 package DataBase
 
 const (
-	nameUserDB     = "users"
-	nameCourseDB   = "courses"
-	nameWebinarDB  = "webinars"
-	nameHomeworkDB = "homeworks"
+	nameUserDB         = "users"
+	nameCourseDB       = "courses"
+	nameWebinarDB      = "webinars"
+	nameSaveHomeworkDB = "homeworks"
+	nameTempHomeworkDB = "homework_templates"
 )

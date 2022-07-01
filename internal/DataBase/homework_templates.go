@@ -1,0 +1,49 @@
+package DataBase
+
+import (
+	"OnlineSchool/internal/structs"
+	"context"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"time"
+)
+
+type TempHomeworkDB struct {
+	collection *mongo.Collection
+}
+type ITempHomeworkDB interface {
+	GetNextTempHomeworks(ctx context.Context, courseId int) ([]structs.HomeworkTemplate, error)
+}
+
+func NewTempHomeworkDB(db *mongo.Database) *TempHomeworkDB {
+	return &TempHomeworkDB{collection: db.Collection(nameTempHomeworkDB)}
+}
+
+func (t *TempHomeworkDB) GetNextTempHomeworks(ctx context.Context, courseId int) ([]structs.HomeworkTemplate, error) {
+	filter := bson.M{"course_id": courseId,
+		"public": true,
+		"public_date": bson.M{
+			"$lte": time.Now()},
+		"deadline": bson.M{
+			"$gte": time.Now()},
+	}
+	var mas []structs.HomeworkTemplate
+	cursor, err := t.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	for cursor.Next(context.TODO()) {
+		var elem structs.HomeworkTemplate
+		err = cursor.Decode(&elem)
+		if err != nil {
+			return nil, err
+		}
+		mas = append(mas, elem)
+	}
+	err = cursor.Err()
+	if err != nil {
+		return nil, err
+	}
+	cursor.Close(context.TODO())
+	return mas, err
+}
