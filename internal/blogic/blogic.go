@@ -25,4 +25,5 @@ type IBLogic interface {
 	GetHomework(userId int, courseId int, homeworkId int) (int, []byte)
 	GetNextCourseHomeworks(userId, courseId int) (int, []byte)
 	GetNextHomeworks(userId int) (int, []byte)
+	GetInfoCourse(userId int, courseId int) (int, []byte)
 }

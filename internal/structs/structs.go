@@ -3,8 +3,12 @@ package structs
 import "time"
 
 type UserCourse struct {
-	CourseId  int   `bson:"course_id" json:"course_id"`
-	BuyPeriod []int `bson:"buy_period" json:"buy_period"`
+	CourseId    int   `bson:"course_id" json:"course_id"`
+	BuyPeriod   []int `bson:"buy_period" json:"buy_period"`
+	HeartCount  int   `bson:"heart_count"`
+	FreezingDay int   `bson:"freezing_day"`
+	Freeze      bool  `bson:"freeze"`
+	Active      bool  `bson:"active"`
 }
 type User struct {
 	UserId     int          `bson:"user_id"`
@@ -15,7 +19,9 @@ type Course struct {
 	CourseId      int               `bson:"course_id"`
 	NameCourse    string            `bson:"name_course"`
 	PaymentPeriod map[int]time.Time `bson:"payment_period"`
-	Сontacts      map[string]string `bson:"сontacts"`
+	Teacher       string            `bson:"teacher"`
+	VkChat        string            `bson:"vk_chat"`
+	VkGroup       string            `bson:"vk_group"`
 }
 type Webinar struct {
 	Name         string    `bson:"name"`

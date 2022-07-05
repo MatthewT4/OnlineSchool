@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"time"
 )
 
@@ -100,6 +101,9 @@ func (b *BLogic) GetNextWebinars(userId int, courseId int) (int, string) {
 		fmt.Println(er.Error())
 		return 404, "not found"
 	}
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].MeetDate.Before(result[j].MeetDate)
+	})
 	re, erro := json.Marshal(&result)
 	if erro != nil {
 		fmt.Println(erro)
