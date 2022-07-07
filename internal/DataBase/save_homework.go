@@ -5,14 +5,13 @@ import (
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
 )
 
 type SaveHomeworkDB struct {
 	collection *mongo.Collection
 }
 type ISaveHomeworkDB interface {
-	GetNextSaveHomeworks(ctx context.Context, courseId int, userId int) ([]structs.HomeworkSave, error)
+	GetNextSaveHomeworks(ctx context.Context, courseId int, userId int, IdHws []int) ([]structs.HomeworkSave, error)
 	GetHomework(ctx context.Context, userId int, courseId int, homeworkId int) (structs.HomeworkSave, error)
 }
 
@@ -27,14 +26,12 @@ func (h *SaveHomeworkDB) GetHomework(ctx context.Context, userId int, courseId i
 	return hw, err
 }
 
-func (t *SaveHomeworkDB) GetNextSaveHomeworks(ctx context.Context, courseId int, userId int) ([]structs.HomeworkSave, error) {
+func (t *SaveHomeworkDB) GetNextSaveHomeworks(ctx context.Context, courseId int, userId int, IdHws []int) ([]structs.HomeworkSave, error) {
 	filter := bson.M{"course_id": courseId,
 		"owner_id": userId,
 		"handed":   true,
-		"public_date": bson.M{
-			"$lte": time.Now(),
-		}, "deadline": bson.M{
-			"$gte": time.Now(),
+		"homework_id": bson.M{
+			"$in": IdHws,
 		}}
 	var mas []structs.HomeworkSave
 	cursor, err := t.collection.Find(ctx, filter)

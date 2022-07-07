@@ -3,6 +3,7 @@ package blogic
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 )
@@ -57,7 +58,11 @@ func (b *BLogic) GetNextCourseHomeworks(userId, courseId int) (int, []byte) {
 		}
 		return 404, []byte("not found")
 	}
-	HwSave, erro := b.DBSaveHomework.GetNextSaveHomeworks(context.TODO(), courseId, userId)
+	var NumberHws []int
+	for _, val := range HwTemp {
+		NumberHws = append(NumberHws, val.HomeworkId)
+	}
+	HwSave, erro := b.DBSaveHomework.GetNextSaveHomeworks(context.TODO(), courseId, userId, NumberHws)
 	if erro != nil && erro != mongo.ErrNoDocuments {
 		return 500, []byte("Server error")
 	}
@@ -122,7 +127,13 @@ func (b *BLogic) GetNextHomeworks(userId int) (int, []byte) {
 			}
 			return 404, []byte("not found")
 		}
-		HwSave, erro := b.DBSaveHomework.GetNextSaveHomeworks(context.TODO(), course.CourseId, userId)
+		var NumberHws []int
+		for _, val := range HwTemp {
+			NumberHws = append(NumberHws, val.HomeworkId)
+		}
+		HwSave, erro := b.DBSaveHomework.GetNextSaveHomeworks(context.TODO(), course.CourseId, userId, NumberHws)
+		fmt.Println("Hw.Temp", HwTemp)
+		fmt.Println("Hw.Save", HwSave)
 		if erro != nil && erro != mongo.ErrNoDocuments {
 			return 500, []byte("Server error")
 		}

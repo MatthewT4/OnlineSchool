@@ -51,6 +51,7 @@ func (rou *Router) GetPastWebinars(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, mes, code)
 		return
 	}
+	w.Header().Add("Access-Control-Allow-Origin", "http://localhost:3000")
 	w.Write([]byte(mes))
 }
 func (rou *Router) GetTodayWebinars(w http.ResponseWriter, r *http.Request) {

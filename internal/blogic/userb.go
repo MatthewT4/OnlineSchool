@@ -131,6 +131,9 @@ func (b *BLogic) GetPastWebinars(userId int, courseId int) (int, string) {
 		fmt.Println(err)
 		return 404, "not found"
 	}
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].MeetDate.Before(result[j].MeetDate)
+	})
 	re, erro := json.Marshal(&result)
 	if erro != nil {
 		fmt.Println(erro)
@@ -169,6 +172,9 @@ func (b *BLogic) GetTodayWebinars(userId int) (int, string) {
 	if len(mas) == 0 {
 		return 404, "not found"
 	}
+	sort.SliceStable(mas, func(i, j int) bool {
+		return mas[i].MeetDate.Before(mas[j].MeetDate)
+	})
 	re, erro := json.Marshal(&mas)
 	if err != nil {
 		fmt.Println(erro)
