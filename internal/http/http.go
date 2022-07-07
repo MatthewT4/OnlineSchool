@@ -25,6 +25,7 @@ func (r *Router) Start() {
 	rou.HandleFunc("/get_past_webinars", r.GetPastWebinars)
 	rou.HandleFunc("/get_homework", r.GetHomework)
 	rou.HandleFunc("/get_next_course_homeworks", r.GetNextCourseHomeworks)
+	rou.HandleFunc("/get_past_course_homeworks", r.GetPastCourseHomeworks)
 	rou.HandleFunc("/get_next_homeworks", r.GetNextHomeworks)
 	rou.HandleFunc("/info_course", r.GetInfoCourse)
 

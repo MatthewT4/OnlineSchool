@@ -62,7 +62,7 @@ func (b *BLogic) GetNextCourseHomeworks(userId, courseId int) (int, []byte) {
 	for _, val := range HwTemp {
 		NumberHws = append(NumberHws, val.HomeworkId)
 	}
-	HwSave, erro := b.DBSaveHomework.GetNextSaveHomeworks(context.TODO(), courseId, userId, NumberHws)
+	HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), courseId, userId, NumberHws, true)
 	if erro != nil && erro != mongo.ErrNoDocuments {
 		return 500, []byte("Server error")
 	}
@@ -131,7 +131,7 @@ func (b *BLogic) GetNextHomeworks(userId int) (int, []byte) {
 		for _, val := range HwTemp {
 			NumberHws = append(NumberHws, val.HomeworkId)
 		}
-		HwSave, erro := b.DBSaveHomework.GetNextSaveHomeworks(context.TODO(), course.CourseId, userId, NumberHws)
+		HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), course.CourseId, userId, NumberHws, true)
 		fmt.Println("Hw.Temp", HwTemp)
 		fmt.Println("Hw.Save", HwSave)
 		if erro != nil && erro != mongo.ErrNoDocuments {
@@ -158,6 +158,79 @@ func (b *BLogic) GetNextHomeworks(userId int) (int, []byte) {
 				v.Deadline = HwTemp[i].Deadline
 				arrRet = append(arrRet, v)
 			}
+		}
+	}
+
+	if len(arrRet) == 0 {
+		return 404, []byte("not found")
+	}
+
+	js, er := json.Marshal(&arrRet)
+	if er != nil {
+		return 500, []byte("Server error")
+	}
+	return 200, js
+}
+
+func (b *BLogic) GetPastCourseHomeworks(userId, courseId int) (int, []byte) {
+	res, err := b.DBUser.GetCourses(context.TODO(), userId)
+	if err != nil {
+		return 404, []byte("not found")
+	}
+	if !b.checkUserCourse(res, courseId) {
+		return 404, []byte("not found")
+	}
+	HwTemp, er := b.DBTempHomework.GetPastTempHomeworks(context.TODO(), courseId)
+	if er != nil {
+		if er == mongo.ErrNoDocuments {
+			return 200, []byte("[]")
+		}
+		return 404, []byte("not found")
+	}
+
+	var NumberHws []int
+	for _, val := range HwTemp {
+		NumberHws = append(NumberHws, val.HomeworkId)
+	}
+	HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), courseId, userId, NumberHws, false)
+	if erro != nil && erro != mongo.ErrNoDocuments {
+		return 500, []byte("Server error")
+	}
+
+	type returnHws struct {
+		HomeworkName string    `json:"homework_name"`
+		Result       int       `json:"result,omitempty"`
+		MaxPoints    int       `json:"max_points,omitempty"`
+		Delivered    time.Time `json:"delivered,omitempty"`
+		Handed       bool      `json:"handed"`
+		HomeworkId   int       `json:"homework_id,omitempty"`
+		Deadline     time.Time `json:"deadline,omitempty"`
+	}
+	mapRes := make(map[int]returnHws)
+	for _, val := range HwTemp {
+		var vr returnHws
+		vr.HomeworkName = val.HomeworkName
+		vr.HomeworkId = val.HomeworkId
+		vr.Deadline = val.Deadline
+		fmt.Println("до")
+		mapRes[val.HomeworkId] = vr
+		fmt.Println("после")
+	}
+	for _, val := range HwSave {
+		vr := mapRes[val.HomeworkId]
+		vr.Handed = val.Handed
+		if val.Handed == true {
+			vr.Delivered = val.Delivered
+			vr.Result = val.Result
+			vr.MaxPoints = val.MaxPoints
+		}
+		mapRes[val.HomeworkId] = vr
+	}
+
+	var arrRet []returnHws
+	for _, val := range mapRes {
+		if val.Handed == true || val.Deadline.Before(time.Now()) {
+			arrRet = append(arrRet, val)
 		}
 	}
 

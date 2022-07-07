@@ -106,6 +106,22 @@ func (rou *Router) GetNextCourseHomeworks(w http.ResponseWriter, r *http.Request
 	}
 	w.Write(mes)
 }
+func (rou *Router) GetPastCourseHomeworks(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value(UserId).(int)
+	var ci string
+	ci = r.URL.Query().Get("course_id")
+	courseId, er := strconv.Atoi(ci)
+	if er != nil {
+		http.Error(w, "type \"course_id\" is not valid", 500)
+		return
+	}
+	code, mes := rou.BLogic.GetPastCourseHomeworks(userId, courseId)
+	if code != 200 {
+		http.Error(w, string(mes), code)
+		return
+	}
+	w.Write(mes)
+}
 
 func (rou *Router) GetNextHomeworks(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(UserId).(int)

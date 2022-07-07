@@ -4,6 +4,7 @@ import (
 	"OnlineSchool/internal/structs"
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -11,7 +12,7 @@ type SaveHomeworkDB struct {
 	collection *mongo.Collection
 }
 type ISaveHomeworkDB interface {
-	GetNextSaveHomeworks(ctx context.Context, courseId int, userId int, IdHws []int) ([]structs.HomeworkSave, error)
+	GetSaveHomeworks(ctx context.Context, courseId int, userId int, IdHws []int, next bool) ([]structs.HomeworkSave, error)
 	GetHomework(ctx context.Context, userId int, courseId int, homeworkId int) (structs.HomeworkSave, error)
 }
 
@@ -26,13 +27,22 @@ func (h *SaveHomeworkDB) GetHomework(ctx context.Context, userId int, courseId i
 	return hw, err
 }
 
-func (t *SaveHomeworkDB) GetNextSaveHomeworks(ctx context.Context, courseId int, userId int, IdHws []int) ([]structs.HomeworkSave, error) {
-	filter := bson.M{"course_id": courseId,
-		"owner_id": userId,
-		"handed":   true,
-		"homework_id": bson.M{
-			"$in": IdHws,
-		}}
+func (t *SaveHomeworkDB) GetSaveHomeworks(ctx context.Context, courseId int, userId int, IdHws []int, next bool) ([]structs.HomeworkSave, error) {
+	var filter primitive.M
+	if next {
+		filter = bson.M{"course_id": courseId,
+			"owner_id": userId,
+			"handed":   true,
+			"homework_id": bson.M{
+				"$in": IdHws,
+			}}
+	} else {
+		filter = bson.M{"course_id": courseId,
+			"owner_id": userId,
+			"homework_id": bson.M{
+				"$in": IdHws,
+			}}
+	}
 	var mas []structs.HomeworkSave
 	cursor, err := t.collection.Find(ctx, filter)
 	if err != nil {
