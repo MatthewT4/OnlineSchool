@@ -12,12 +12,20 @@ type TempHomeworkDB struct {
 	collection *mongo.Collection
 }
 type ITempHomeworkDB interface {
+	GetHomework(ctx context.Context, homeworkId int) (structs.HomeworkTemplate, error)
 	GetNextTempHomeworks(ctx context.Context, courseId int) ([]structs.HomeworkTemplate, error)
 	GetPastTempHomeworks(ctx context.Context, courseId int) ([]structs.HomeworkTemplate, error)
 }
 
 func NewTempHomeworkDB(db *mongo.Database) *TempHomeworkDB {
 	return &TempHomeworkDB{collection: db.Collection(nameTempHomeworkDB)}
+}
+
+func (t *TempHomeworkDB) GetHomework(ctx context.Context, homeworkId int) (structs.HomeworkTemplate, error) {
+	filter := bson.M{"homework_id": homeworkId}
+	var hw structs.HomeworkTemplate
+	err := t.collection.FindOne(ctx, filter).Decode(&hw)
+	return hw, err
 }
 
 func (t *TempHomeworkDB) GetNextTempHomeworks(ctx context.Context, courseId int) ([]structs.HomeworkTemplate, error) {

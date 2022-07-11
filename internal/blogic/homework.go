@@ -1,6 +1,7 @@
 package blogic
 
 import (
+	"OnlineSchool/internal/structs"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,39 +9,77 @@ import (
 	"time"
 )
 
-func (b *BLogic) GetHomework(userId int, courseId int, homeworkId int) (int, []byte) {
-	/*res, err := b.DBSaveHomework.GetHomework(context.TODO(), userId, courseId, homeworkId)
-	if err != nil {
+type retTask struct {
+	Number      int      `json:"number"`
+	Text        string   `json:"text"`
+	File        []string `json:"file,omitempty"`
+	Answers     []string `json:"answers,omitempty"`
+	UserAnswers string   `json:"user_answers"`
+	Solution    string   `json:"solution,omitempty"`
+	Written     bool     `json:"written"`
+	TypeAnswers []string `json:"type_answers,omitempty"`
+	UserPoint   int      `json:"user_point,omitempty"`
+	MaxPoint    int      `json:"max_point"`
+}
+
+func (b *BLogic) GetHomework(userId int, homeworkId int) (int, []byte) {
+	tempRes, er := b.DBTempHomework.GetHomework(context.TODO(), homeworkId)
+	if er != nil {
+		if er == mongo.ErrNoDocuments {
+			return 404, []byte("not found")
+		}
+	}
+	if tempRes.PublicDate.After(time.Now()) {
+		fmt.Println("hw after time.now")
 		return 404, []byte("not found")
 	}
-	if res.PublicDate.After(time.Now()) {
-		fmt.Println("hw before time.now")
-		return 404, []byte("not found")
+	save, err := b.DBSaveHomework.GetHomework(context.TODO(), userId, homeworkId)
+	if err != nil && err != mongo.ErrNoDocuments {
+		return 500, []byte("Server error")
 	}
-	var hw struct {
-		HomeworkName string                 `json:"homework_name"`
-		Deadline     time.Time              `json:"deadline"`
-		HomeworkId   int                    `json:"homework_id"`
-		Tasks        []structs.HomeworkTask `json:"tasks"`
-		Result       int                    `json:"result,omitempty"`
-		MaxPoints    int                    `json:"max_points"`
-		Delivered    time.Time              `json:"delivered,omitempty"`
+	saveMap := make(map[int]structs.HomeworkTask)
+	for _, val := range save.Tasks {
+		saveMap[val.TaskId] = val
+	}
+	var handed bool
+	if err == mongo.ErrNoDocuments {
+		handed = false
+	} else {
+		handed = save.Handed
 	}
 
-	hw.HomeworkName = res.HomeworkName
-	hw.Deadline = res.Deadline
-	hw.HomeworkId = res.HomeworkId
-	hw.Tasks = res.Tasks
-	hw.MaxPoints = res.MaxPoints
-	hw.Result = res.Result
-	hw.Delivered = res.Delivered
+	var tasksId []int
+	for _, val := range tempRes.Tasks {
+		tasksId = append(tasksId, val.TaskId)
+	}
+	mapTasks, ok := b.getTasks(tasksId, handed)
+	if !ok {
+		return 500, []byte("Server error")
+	}
+	var returnTasks []retTask
+	for key, value := range tempRes.Tasks {
+		task := mapTasks[value.TaskId]
+		var vr retTask
+		vr.Number = key + 1
+		vr.Text = task.Text
+		vr.TypeAnswers = task.TypeAnswers
+		vr.File = task.File
+		vr.Written = task.Written
+		vr.MaxPoint = task.MaxPoint
+		vr.UserAnswers = saveMap[value.TaskId].UserAnswer
+		if handed {
+			vr.UserPoint = saveMap[value.TaskId].Point
+			vr.Answers = task.Answers
+			vr.Solution = task.Solution
+		}
+		returnTasks = append(returnTasks, vr)
+	}
 
-	js, er := json.Marshal(&hw)
+	js, er := json.Marshal(&returnTasks)
 	if er != nil {
 		return 500, []byte("Server error")
 	}
-	return 200, js*/
-	return 500, []byte("Server error")
+	return 200, js
 }
 
 func (b *BLogic) GetNextCourseHomeworks(userId, courseId int) (int, []byte) {
@@ -116,25 +155,29 @@ func (b *BLogic) GetNextHomeworks(userId int) (int, []byte) {
 	}
 	var arrRet []returnHws
 	res, err := b.DBUser.GetCourses(context.TODO(), userId)
+	fmt.Println(res)
 	if err != nil {
 		return 404, []byte("not found")
 	}
 	for _, course := range res {
+		fmt.Println(1222223)
 		HwTemp, er := b.DBTempHomework.GetNextTempHomeworks(context.TODO(), course.CourseId)
 		if er != nil {
-			if er == mongo.ErrNoDocuments {
-				return 200, []byte("[]")
-			}
-			return 404, []byte("not found")
+			continue
 		}
+		fmt.Println("Hw.Temp", HwTemp)
 		var NumberHws []int
 		for _, val := range HwTemp {
 			NumberHws = append(NumberHws, val.HomeworkId)
 		}
+		if len(NumberHws) == 0 {
+			continue
+		}
 		HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), course.CourseId, userId, NumberHws, true)
 		fmt.Println("Hw.Temp", HwTemp)
 		fmt.Println("Hw.Save", HwSave)
-		if erro != nil && erro != mongo.ErrNoDocuments {
+		if erro != nil && erro != mongo.ErrNilDocument {
+			fmt.Println(erro.Error())
 			return 500, []byte("Server error")
 		}
 

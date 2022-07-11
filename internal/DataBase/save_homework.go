@@ -13,15 +13,15 @@ type SaveHomeworkDB struct {
 }
 type ISaveHomeworkDB interface {
 	GetSaveHomeworks(ctx context.Context, courseId int, userId int, IdHws []int, next bool) ([]structs.HomeworkSave, error)
-	GetHomework(ctx context.Context, userId int, courseId int, homeworkId int) (structs.HomeworkSave, error)
+	GetHomework(ctx context.Context, userId int, homeworkId int) (structs.HomeworkSave, error)
 }
 
 func NewSaveHomeworkDB(db *mongo.Database) *SaveHomeworkDB {
 	return &SaveHomeworkDB{collection: db.Collection(nameSaveHomeworkDB)}
 }
 
-func (h *SaveHomeworkDB) GetHomework(ctx context.Context, userId int, courseId int, homeworkId int) (structs.HomeworkSave, error) {
-	filter := bson.M{"owner_id": userId, "course_id": courseId, "homework_id": homeworkId}
+func (h *SaveHomeworkDB) GetHomework(ctx context.Context, userId int, homeworkId int) (structs.HomeworkSave, error) {
+	filter := bson.M{"owner_id": userId, "homework_id": homeworkId}
 	var hw structs.HomeworkSave
 	err := h.collection.FindOne(ctx, filter).Decode(&hw)
 	return hw, err

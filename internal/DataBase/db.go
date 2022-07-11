@@ -6,4 +6,5 @@ const (
 	nameWebinarDB      = "webinars"
 	nameSaveHomeworkDB = "homeworks"
 	nameTempHomeworkDB = "homework_templates"
+	nameTaskBankDB     = "task_bank"
 )

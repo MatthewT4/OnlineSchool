@@ -67,22 +67,15 @@ func (rou *Router) GetTodayWebinars(w http.ResponseWriter, r *http.Request) {
 
 func (rou *Router) GetHomework(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(UserId).(int)
-	var ci string
-	ci = r.URL.Query().Get("course_id")
-	courseId, er := strconv.Atoi(ci)
-	if er != nil {
-		http.Error(w, "type \"course_id\" is not valid", 500)
-		return
-	}
 	var hwI string
 	hwI = r.URL.Query().Get("homework_id")
 	homeworkId, err := strconv.Atoi(hwI)
+	fmt.Println(homeworkId)
 	if err != nil {
 		http.Error(w, "type \"homework_id\" is not valid", 500)
 		return
 	}
-	fmt.Println(courseId, homeworkId)
-	code, mes := rou.BLogic.GetHomework(userId, courseId, homeworkId)
+	code, mes := rou.BLogic.GetHomework(userId, homeworkId)
 	if code != 200 {
 		http.Error(w, string(mes), code)
 		return
@@ -111,6 +104,7 @@ func (rou *Router) GetPastCourseHomeworks(w http.ResponseWriter, r *http.Request
 	var ci string
 	ci = r.URL.Query().Get("course_id")
 	courseId, er := strconv.Atoi(ci)
+	fmt.Println(courseId)
 	if er != nil {
 		http.Error(w, "type \"course_id\" is not valid", 500)
 		return
@@ -120,6 +114,7 @@ func (rou *Router) GetPastCourseHomeworks(w http.ResponseWriter, r *http.Request
 		http.Error(w, string(mes), code)
 		return
 	}
+	w.Header().Add("Access-Control-Allow-Origin", "http://localhost:3000")
 	w.Write(mes)
 }
 

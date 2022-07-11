@@ -43,8 +43,6 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 	}
 
 	var mas []resCourses
-	fmt.Println(len(res))
-	fmt.Println(res)
 	for i := 0; i < len(res); i++ {
 		course, er := b.DBCourse.GetCourse(context.TODO(), res[i].CourseId)
 		if er == nil {
