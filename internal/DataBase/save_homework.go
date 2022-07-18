@@ -12,22 +12,22 @@ type SaveHomeworkDB struct {
 	collection *mongo.Collection
 }
 type ISaveHomeworkDB interface {
-	GetSaveHomeworks(ctx context.Context, courseId int, userId int, IdHws []int, next bool) ([]structs.HomeworkSave, error)
-	GetHomework(ctx context.Context, userId int, homeworkId int) (structs.HomeworkSave, error)
+	GetSaveHomeworks(ctx context.Context, courseId int, userId int64, IdHws []int, next bool) ([]structs.HomeworkSave, error)
+	GetHomework(ctx context.Context, userId int64, homeworkId int) (structs.HomeworkSave, error)
 }
 
 func NewSaveHomeworkDB(db *mongo.Database) *SaveHomeworkDB {
 	return &SaveHomeworkDB{collection: db.Collection(nameSaveHomeworkDB)}
 }
 
-func (h *SaveHomeworkDB) GetHomework(ctx context.Context, userId int, homeworkId int) (structs.HomeworkSave, error) {
+func (h *SaveHomeworkDB) GetHomework(ctx context.Context, userId int64, homeworkId int) (structs.HomeworkSave, error) {
 	filter := bson.M{"owner_id": userId, "homework_id": homeworkId}
 	var hw structs.HomeworkSave
 	err := h.collection.FindOne(ctx, filter).Decode(&hw)
 	return hw, err
 }
 
-func (t *SaveHomeworkDB) GetSaveHomeworks(ctx context.Context, courseId int, userId int, IdHws []int, next bool) ([]structs.HomeworkSave, error) {
+func (t *SaveHomeworkDB) GetSaveHomeworks(ctx context.Context, courseId int, userId int64, IdHws []int, next bool) ([]structs.HomeworkSave, error) {
 	var filter primitive.M
 	if next {
 		filter = bson.M{"course_id": courseId,

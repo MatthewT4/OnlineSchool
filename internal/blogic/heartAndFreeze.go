@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func (b *BLogic) GetInfoCourse(userId int, courseId int) (int, []byte) {
+func (b *BLogic) GetInfoCourse(userId int64, courseId int) (int, []byte) {
 	coursesMas, err := b.DBUser.GetCourses(context.TODO(), userId)
 	if err != nil {
 		return 404, []byte("not found")

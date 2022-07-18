@@ -18,7 +18,10 @@ func NewRouter(db *mongo.Database) *Router {
 }
 
 func (r *Router) Start() {
-	rou := mux.NewRouter()
+	ro := mux.NewRouter()
+	rScreen := ro.PathPrefix("/auth").Subrouter()
+	rScreen.HandleFunc("/login", r.Login)
+	rou := ro.PathPrefix("/").Subrouter()
 	rou.HandleFunc("/get_courses", r.GetCourses)
 	rou.HandleFunc("/get_next_webinars", r.GetNextWebinars)
 	rou.HandleFunc("/get_today_webinars", r.GetTodayWebinars)
@@ -28,11 +31,10 @@ func (r *Router) Start() {
 	rou.HandleFunc("/get_past_course_homeworks", r.GetPastCourseHomeworks)
 	rou.HandleFunc("/get_next_homeworks", r.GetNextHomeworks)
 	rou.HandleFunc("/info_course", r.GetInfoCourse)
-
 	rou.Use(r.UserAuthentication)
 
 	srv := &http.Server{
-		Handler: rou,
+		Handler: ro,
 		Addr:    ":80",
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout: 15 * time.Second,

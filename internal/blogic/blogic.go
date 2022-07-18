@@ -12,6 +12,7 @@ type BLogic struct {
 	DBSaveHomework DataBase.ISaveHomeworkDB
 	DBTempHomework DataBase.ITempHomeworkDB
 	DBTaskBank     DataBase.ITaskBankDB
+	JWTManager     TokenManager
 }
 
 func NewBLogic(db *mongo.Database) *BLogic {
@@ -21,17 +22,20 @@ func NewBLogic(db *mongo.Database) *BLogic {
 		DBSaveHomework: DataBase.NewSaveHomeworkDB(db),
 		DBTempHomework: DataBase.NewTempHomeworkDB(db),
 		DBTaskBank:     DataBase.NewTaskBankDB(db),
+		JWTManager:     NewManager("dffid324jnk3"),
 	}
 }
 
 type IBLogic interface {
-	GetUserCourses(user_id int) (int, string)
-	GetNextWebinars(user_id int, course_id int) (int, string)
-	GetPastWebinars(user_id int, course_id int) (int, string)
-	GetTodayWebinars(user_id int) (int, string)
-	GetHomework(userId int, homeworkId int) (int, []byte)
-	GetNextCourseHomeworks(userId, courseId int) (int, []byte)
-	GetNextHomeworks(userId int) (int, []byte)
-	GetInfoCourse(userId int, courseId int) (int, []byte)
-	GetPastCourseHomeworks(userId, courseId int) (int, []byte)
+	GetUserCourses(user_id int64) (int, string)
+	GetNextWebinars(user_id int64, course_id int) (int, string)
+	GetPastWebinars(user_id int64, course_id int) (int, string)
+	GetTodayWebinars(user_id int64) (int, string)
+	GetHomework(userId int64, homeworkId int) (int, []byte)
+	GetNextCourseHomeworks(userId int64, courseId int) (int, []byte)
+	GetNextHomeworks(userId int64) (int, []byte)
+	GetInfoCourse(userId int64, courseId int) (int, []byte)
+	GetPastCourseHomeworks(userId int64, courseId int) (int, []byte)
+	Login(VKCode string, redirectUrl string) (int, []byte, string /*cookie*/)
+	Authentication(token string) (int64, int, error)
 }

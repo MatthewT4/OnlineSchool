@@ -14,7 +14,7 @@ type retTask struct {
 	Text        string   `json:"text"`
 	File        []string `json:"file,omitempty"`
 	Answers     []string `json:"answers,omitempty"`
-	UserAnswers string   `json:"user_answers"`
+	UserAnswer  string   `json:"user_answer"`
 	Solution    string   `json:"solution,omitempty"`
 	Written     bool     `json:"written"`
 	TypeAnswers []string `json:"type_answers,omitempty"`
@@ -22,7 +22,7 @@ type retTask struct {
 	MaxPoint    int      `json:"max_point"`
 }
 
-func (b *BLogic) GetHomework(userId int, homeworkId int) (int, []byte) {
+func (b *BLogic) GetHomework(userId int64, homeworkId int) (int, []byte) {
 	tempRes, er := b.DBTempHomework.GetHomework(context.TODO(), homeworkId)
 	if er != nil {
 		if er == mongo.ErrNoDocuments {
@@ -33,8 +33,17 @@ func (b *BLogic) GetHomework(userId int, homeworkId int) (int, []byte) {
 		fmt.Println("hw after time.now")
 		return 404, []byte("not found")
 	}
+	res, e := b.DBUser.GetCourses(context.TODO(), userId)
+	if e != nil {
+		return 404, []byte("not found")
+	}
+	if !b.checkUserCourse(res, tempRes.CourseId) {
+		return 404, []byte("not found")
+	}
+
 	save, err := b.DBSaveHomework.GetHomework(context.TODO(), userId, homeworkId)
 	if err != nil && err != mongo.ErrNoDocuments {
+		fmt.Println(err.Error())
 		return 500, []byte("Server error")
 	}
 	saveMap := make(map[int]structs.HomeworkTask)
@@ -54,6 +63,7 @@ func (b *BLogic) GetHomework(userId int, homeworkId int) (int, []byte) {
 	}
 	mapTasks, ok := b.getTasks(tasksId, handed)
 	if !ok {
+		fmt.Println(123)
 		return 500, []byte("Server error")
 	}
 	var returnTasks []retTask
@@ -66,7 +76,7 @@ func (b *BLogic) GetHomework(userId int, homeworkId int) (int, []byte) {
 		vr.File = task.File
 		vr.Written = task.Written
 		vr.MaxPoint = task.MaxPoint
-		vr.UserAnswers = saveMap[value.TaskId].UserAnswer
+		vr.UserAnswer = saveMap[value.TaskId].UserAnswer
 		if handed {
 			vr.UserPoint = saveMap[value.TaskId].Point
 			vr.Answers = task.Answers
@@ -74,15 +84,29 @@ func (b *BLogic) GetHomework(userId int, homeworkId int) (int, []byte) {
 		}
 		returnTasks = append(returnTasks, vr)
 	}
-
-	js, er := json.Marshal(&returnTasks)
+	var ret struct {
+		Tasks     []retTask `json:"tasks"`
+		Name      string    `json:"name"`
+		Handed    bool      `json:"handed"`
+		UserPoint int       `json:"user_point,omitempty"`
+		MaxPoint  int       `json:"max_point,omitempty"`
+	}
+	ret.Name = tempRes.HomeworkName
+	ret.Tasks = returnTasks
+	ret.Handed = handed
+	if handed {
+		ret.UserPoint = save.Result
+		ret.MaxPoint = save.MaxPoints
+	}
+	js, er := json.Marshal(&ret)
 	if er != nil {
+		fmt.Println("marshal error")
 		return 500, []byte("Server error")
 	}
 	return 200, js
 }
 
-func (b *BLogic) GetNextCourseHomeworks(userId, courseId int) (int, []byte) {
+func (b *BLogic) GetNextCourseHomeworks(userId int64, courseId int) (int, []byte) {
 	res, err := b.DBUser.GetCourses(context.TODO(), userId)
 	if err != nil {
 		return 404, []byte("not found")
@@ -146,7 +170,7 @@ func (b *BLogic) GetNextCourseHomeworks(userId, courseId int) (int, []byte) {
 	return 200, js
 }
 
-func (b *BLogic) GetNextHomeworks(userId int) (int, []byte) {
+func (b *BLogic) GetNextHomeworks(userId int64) (int, []byte) {
 	type returnHws struct {
 		HomeworkName string    `json:"homework_name"`
 		Deadline     time.Time `json:"deadline"`
@@ -215,7 +239,7 @@ func (b *BLogic) GetNextHomeworks(userId int) (int, []byte) {
 	return 200, js
 }
 
-func (b *BLogic) GetPastCourseHomeworks(userId, courseId int) (int, []byte) {
+func (b *BLogic) GetPastCourseHomeworks(userId int64, courseId int) (int, []byte) {
 	res, err := b.DBUser.GetCourses(context.TODO(), userId)
 	if err != nil {
 		return 404, []byte("not found")

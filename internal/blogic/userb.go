@@ -30,8 +30,8 @@ func (b *BLogic) checkUserCourse(courses []structs.UserCourse, courseId int) boo
 	return false
 }
 
-func (b *BLogic) GetUserCourses(user_id int) (int, string) {
-	res, err := b.DBUser.GetCourses(context.TODO(), user_id)
+func (b *BLogic) GetUserCourses(userId int64) (int, string) {
+	res, err := b.DBUser.GetCourses(context.TODO(), userId)
 	if err != nil {
 		fmt.Println(err.Error())
 		return 404, "not found"
@@ -44,6 +44,9 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 
 	var mas []resCourses
 	for i := 0; i < len(res); i++ {
+		if res[i].Active == false {
+			continue
+		}
 		course, er := b.DBCourse.GetCourse(context.TODO(), res[i].CourseId)
 		if er == nil {
 			//find max payment period
@@ -74,7 +77,7 @@ func (b *BLogic) GetUserCourses(user_id int) (int, string) {
 	return 200, string(jr)
 }
 
-func (b *BLogic) GetNextWebinars(userId int, courseId int) (int, string) {
+func (b *BLogic) GetNextWebinars(userId int64, courseId int) (int, string) {
 	res, err := b.DBUser.GetCourses(context.TODO(), userId)
 	if err != nil {
 		return 404, "not found"
@@ -110,7 +113,7 @@ func (b *BLogic) GetNextWebinars(userId int, courseId int) (int, string) {
 	return 200, string(re)
 }
 
-func (b *BLogic) GetPastWebinars(userId int, courseId int) (int, string) {
+func (b *BLogic) GetPastWebinars(userId int64, courseId int) (int, string) {
 	res, err := b.DBUser.GetCourses(context.TODO(), userId)
 	if err != nil {
 		return 404, "not found"
@@ -140,7 +143,7 @@ func (b *BLogic) GetPastWebinars(userId int, courseId int) (int, string) {
 	return 200, string(re)
 }
 
-func (b *BLogic) GetTodayWebinars(userId int) (int, string) {
+func (b *BLogic) GetTodayWebinars(userId int64) (int, string) {
 	res, err := b.DBUser.GetCourses(context.TODO(), userId)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -156,6 +159,9 @@ func (b *BLogic) GetTodayWebinars(userId int) (int, string) {
 	}
 	var mas []retWebinar
 	for i := 0; i < len(res); i++ {
+		if !res[i].Active {
+			continue
+		}
 		dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, res[i].CourseId)
 		if errorr != nil {
 			return 500, errorr.Error()

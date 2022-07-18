@@ -11,9 +11,12 @@ type UserCourse struct {
 	Active      bool  `bson:"active"`
 }
 type User struct {
-	UserId     int          `bson:"user_id"`
-	VkId       string       `bson:"vk_id"`
+	UserId     int64        `bson:"user_id"`
+	VkId       int64        `bson:"vk_id"`
+	Avatar     string       `bson:"avatar"`
 	BuyCourses []UserCourse `bson:"buy_courses"`
+	FirstName  string       `bson:"first_name"`
+	LastName   string       `bson:"last_name"`
 }
 type Course struct {
 	CourseId      int               `bson:"course_id"`
@@ -28,7 +31,7 @@ type Webinar struct {
 	MeetDate     time.Time `bson:"meet_date"`
 	WebinarId    int       `bson:"webinar_id"`
 	CourseId     int       `bson:"course_id"`
-	SpeakerId    int       `bson:"speaker_id"`
+	SpeakerId    int64     `bson:"speaker_id"`
 	WebLink      string    `bson:"web_link"`
 	RecordLink   string    `bson:"record_link"`
 	Conspect     string    `bson:"conspect"`
@@ -58,7 +61,7 @@ type HomeworkTask struct {
 
 type HomeworkSave struct {
 	CourseId   int            `bson:"course_id"`
-	OwnerId    int            `bson:"owner_id"`
+	OwnerId    int64          `bson:"owner_id"`
 	HomeworkId int            `bson:"homework_id"`
 	Tasks      []HomeworkTask `bson:"tasks"`
 	Result     int            `bson:"result,omitempty"`

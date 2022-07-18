@@ -2,7 +2,10 @@ package http
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 )
 
 const (
@@ -11,7 +14,11 @@ const (
 
 func (rou *Router) UserAuthentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		/*cookie, er := r.Cookie("authTokentest")
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		//w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Credentials", "true") /*cookie, er := r.Cookie("authTokentest")
 		if er != nil {
 			http.Error(w, "not cookie", 401)
 			return
@@ -26,11 +33,57 @@ func (rou *Router) UserAuthentication(next http.Handler) http.Handler {
 			r = r.WithContext(ctxt)
 			next.ServeHTTP(w, r)
 		}*/
-		var userId int
-		userId = 1
+		cookie, er := r.Cookie("authToken")
+		if er != nil {
+			fmt.Println("not cookie")
+			http.Error(w, "not cookie", 401)
+			return
+		}
+		fmt.Println(cookie)
+		fmt.Println(cookie.Value)
+
+		userId, _, err := rou.BLogic.Authentication(cookie.Value)
+		if err != nil {
+			fmt.Println("Authentication error: ", err.Error())
+			http.Error(w, "not cookie", 401)
+		}
 		ctxt := context.WithValue(r.Context(), UserId, userId)
 		r = r.WithContext(ctxt)
 		next.ServeHTTP(w, r)
 
 	})
+}
+
+func (rou *Router) Login(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(1)
+	var cVK string
+	cVK = r.URL.Query().Get("code")
+
+	var red string
+	red = r.URL.Query().Get("redirect_uri")
+
+	code, mes, token := rou.BLogic.Login(cVK, red)
+	fmt.Println(2)
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	//w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	if code != 200 {
+		fmt.Println("er 3")
+		http.Error(w, string(mes), code)
+		return
+	}
+	cookie := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), SameSite: 4, Secure: true, Path: "/", Domain: "localhost"}
+	http.SetCookie(w, &cookie)
+	var vr struct {
+		Body string `json:"body"`
+	}
+	coc := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), Path: "/"}
+	vr.Body = coc.String()
+	d, e := json.Marshal(&vr)
+	if e != nil {
+		http.Error(w, "server error", 500)
+	}
+	w.Write(d)
 }
