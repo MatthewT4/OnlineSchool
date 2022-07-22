@@ -49,16 +49,14 @@ func (b *BLogic) GetUserCourses(userId int64) (int, string) {
 		}
 		course, er := b.DBCourse.GetCourse(context.TODO(), res[i].CourseId)
 		if er == nil {
-			//find max payment period
-			max := 0
-			for j := 0; j < len(res[i].BuyPeriod); j++ {
-				if max < res[i].BuyPeriod[j] {
-					max = res[i].BuyPeriod[j]
-				}
-			}
 			var c resCourses
 			c.NameCourse = course.NameCourse
-			c.PaymentEnd = course.PaymentPeriod[max]
+			payEnd, e := b.getDateLastPaymentPeriod(res, res[i].CourseId, course)
+			if e != nil {
+				fmt.Println("Error parse end period getDateLastPaymentPeriod COURSE_ID=", res[i].CourseId)
+				continue
+			}
+			c.PaymentEnd = payEnd
 			c.CourseId = course.CourseId
 			fmt.Println(c)
 			mas = append(mas, c)
@@ -93,7 +91,12 @@ func (b *BLogic) GetNextWebinars(userId int64, courseId int) (int, string) {
 		return 404, "time parse error"
 	}
 	end_time := time.Now().Add(time.Hour * 24 * 365 * 2)
-	dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, courseId)
+
+	course, e := b.DBCourse.GetCourse(context.TODO(), courseId)
+	if e != nil {
+		return 500, "Server error"
+	}
+	dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, courseId, course)
 	if errorr != nil {
 		return 500, errorr.Error()
 	}
@@ -123,7 +126,12 @@ func (b *BLogic) GetPastWebinars(userId int64, courseId int) (int, string) {
 	}
 	endTime := time.Now()
 	startTime := time.Now().Add(-time.Hour * 24 * 365 * 2)
-	dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, courseId)
+
+	course, e := b.DBCourse.GetCourse(context.TODO(), courseId)
+	if e != nil {
+		return 500, "Server error"
+	}
+	dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, courseId, course)
 	if errorr != nil {
 		return 500, errorr.Error()
 	}
@@ -162,7 +170,12 @@ func (b *BLogic) GetTodayWebinars(userId int64) (int, string) {
 		if !res[i].Active {
 			continue
 		}
-		dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, res[i].CourseId)
+
+		course, e := b.DBCourse.GetCourse(context.TODO(), res[i].CourseId)
+		if e != nil {
+			return 500, "Server error"
+		}
+		dateLastPaymentPeriod, errorr := b.getDateLastPaymentPeriod(res, res[i].CourseId, course)
 		if errorr != nil {
 			return 500, errorr.Error()
 		}
@@ -213,7 +226,7 @@ func (b *BLogic) getWebinars(start_time time.Time, end_time time.Time, courseId 
 	return mas, nil
 }
 
-func (b *BLogic) getDateLastPaymentPeriod(courses []structs.UserCourse, courseId int) (time.Time, error) {
+func (b *BLogic) getDateLastPaymentPeriod(courses []structs.UserCourse, courseId int, course structs.Course) (time.Time, error) {
 	maxx_period := 0
 	for i := 0; i < len(courses); i++ {
 		if courses[i].CourseId == courseId {
@@ -224,10 +237,10 @@ func (b *BLogic) getDateLastPaymentPeriod(courses []structs.UserCourse, courseId
 			}
 		}
 	}
-	cour, errorr := b.DBCourse.GetCourse(context.TODO(), courseId)
-	if errorr != nil {
-		return time.Now(), fmt.Errorf("server error")
+	for _, val := range course.PaymentPeriods {
+		if val.PeriodId == maxx_period {
+			return val.EndDate, nil
+		}
 	}
-	dateLstPaymentPeriod := cour.PaymentPeriod[maxx_period]
-	return dateLstPaymentPeriod, nil
+	return time.Now(), fmt.Errorf("Period not found")
 }

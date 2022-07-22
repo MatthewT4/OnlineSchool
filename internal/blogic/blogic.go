@@ -2,6 +2,7 @@ package blogic
 
 import (
 	"OnlineSchool/internal/DataBase"
+	"OnlineSchool/internal/structs"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -38,4 +39,5 @@ type IBLogic interface {
 	GetPastCourseHomeworks(userId int64, courseId int) (int, []byte)
 	Login(VKCode string, redirectUrl string) (int, []byte, string /*cookie*/)
 	Authentication(token string) (int64, int, error)
+	SubmitHomework(userId int64, homeworkId int, answers []structs.HomeworkTask) (int, string)
 }

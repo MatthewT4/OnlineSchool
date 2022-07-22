@@ -18,13 +18,20 @@ type User struct {
 	FirstName  string       `bson:"first_name"`
 	LastName   string       `bson:"last_name"`
 }
+
+type PayPeriod struct {
+	PeriodId  int       `bson:"period_id"`
+	StartDate time.Time `bson:"start_date"`
+	EndDate   time.Time `bson:"end_date"`
+	Price     int       `bson:"price"`
+}
 type Course struct {
-	CourseId      int               `bson:"course_id"`
-	NameCourse    string            `bson:"name_course"`
-	PaymentPeriod map[int]time.Time `bson:"payment_period"`
-	Teacher       string            `bson:"teacher"`
-	VkChat        string            `bson:"vk_chat"`
-	VkGroup       string            `bson:"vk_group"`
+	CourseId       int         `bson:"course_id"`
+	NameCourse     string      `bson:"name_course"`
+	PaymentPeriods []PayPeriod `bson:"payment_periods"`
+	Teacher        string      `bson:"teacher"`
+	VkChat         string      `bson:"vk_chat"`
+	VkGroup        string      `bson:"vk_group"`
 }
 type Webinar struct {
 	Name         string    `bson:"name"`
@@ -49,6 +56,7 @@ type Task struct {
 	Written     bool     `bson:"written"`
 	TypeAnswers []string `bson:"type_answers,omitempty"`
 	MaxPoint    int      `bson:"max_point"`
+	Handler     string   `bson:"handler,omitempty"`
 }
 
 type HomeworkTask struct {
@@ -56,11 +64,10 @@ type HomeworkTask struct {
 	TaskId     int    `bson:"task_id" json:"task_id"`
 	UserAnswer string `bson:"user_answer" json:"user_answer"`
 	MaxPoint   int    `bson:"max_point" json:"max_point"`
-	Point      int    `bson:"point,omitempty" json:"point,omitempty"`
+	Point      int    `bson:"point" json:"point,omitempty"`
 }
 
 type HomeworkSave struct {
-	CourseId   int            `bson:"course_id"`
 	OwnerId    int64          `bson:"owner_id"`
 	HomeworkId int            `bson:"homework_id"`
 	Tasks      []HomeworkTask `bson:"tasks"`

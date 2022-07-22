@@ -1,7 +1,10 @@
 package http
 
 import (
+	"OnlineSchool/internal/structs"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 )
@@ -139,4 +142,32 @@ func (rou *Router) GetInfoCourse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(mes)
+}
+
+func (rou *Router) SubmitHomework(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value(UserId).(int64)
+	var resp struct {
+		Answers    []structs.HomeworkTask `json:"answers"`
+		HomeworkId int                    `json:"homework_id"`
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	//проверяем на наличие ошибки
+
+	if err != nil {
+		http.Error(w, "server error", 500)
+		fmt.Fprintf(w, "err %q\n", err, err.Error())
+	} else {
+		//если все нормально - пишем по указателю в структуру
+		err = json.Unmarshal(body, &resp)
+		if err != nil {
+			http.Error(w, "json parse error", 400)
+			fmt.Println(w, "can't unmarshal: ", err.Error())
+		}
+	}
+	code, mes := rou.BLogic.SubmitHomework(userId, resp.HomeworkId, resp.Answers)
+	if code != 200 {
+		http.Error(w, string(mes), code)
+		return
+	}
+	w.Write([]byte(mes))
 }

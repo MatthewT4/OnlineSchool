@@ -6,14 +6,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 type SaveHomeworkDB struct {
 	collection *mongo.Collection
 }
 type ISaveHomeworkDB interface {
-	GetSaveHomeworks(ctx context.Context, courseId int, userId int64, IdHws []int, next bool) ([]structs.HomeworkSave, error)
+	GetSaveHomeworks(ctx context.Context, userId int64, IdHws []int, next bool) ([]structs.HomeworkSave, error)
 	GetHomework(ctx context.Context, userId int64, homeworkId int) (structs.HomeworkSave, error)
+	CreateSaveHw(ctx context.Context, hwSave structs.HomeworkSave) error
+	UpdateTasks(ctx context.Context, hwId int, userId int64, tasks []structs.HomeworkTask, result int) (int64, error)
 }
 
 func NewSaveHomeworkDB(db *mongo.Database) *SaveHomeworkDB {
@@ -27,17 +30,17 @@ func (h *SaveHomeworkDB) GetHomework(ctx context.Context, userId int64, homework
 	return hw, err
 }
 
-func (t *SaveHomeworkDB) GetSaveHomeworks(ctx context.Context, courseId int, userId int64, IdHws []int, next bool) ([]structs.HomeworkSave, error) {
+func (t *SaveHomeworkDB) GetSaveHomeworks(ctx context.Context, userId int64, IdHws []int, next bool) ([]structs.HomeworkSave, error) {
 	var filter primitive.M
 	if next {
-		filter = bson.M{"course_id": courseId,
+		filter = bson.M{
 			"owner_id": userId,
 			"handed":   true,
 			"homework_id": bson.M{
 				"$in": IdHws,
 			}}
 	} else {
-		filter = bson.M{"course_id": courseId,
+		filter = bson.M{
 			"owner_id": userId,
 			"homework_id": bson.M{
 				"$in": IdHws,
@@ -62,4 +65,26 @@ func (t *SaveHomeworkDB) GetSaveHomeworks(ctx context.Context, courseId int, use
 	}
 	cursor.Close(context.TODO())
 	return mas, err
+}
+
+func (s *SaveHomeworkDB) CreateSaveHw(ctx context.Context, hwSave structs.HomeworkSave) error {
+	_, err := s.collection.InsertOne(context.TODO(), hwSave)
+	return err
+}
+
+func (s *SaveHomeworkDB) UpdateTasks(ctx context.Context, hwId int, userId int64, tasks []structs.HomeworkTask, result int) (int64, error) {
+	filter := bson.M{
+		"homework_id": hwId,
+		"owner_id":    userId,
+	}
+	update := bson.D{
+		{"$set", bson.D{
+			{"tasks", tasks},
+			{"handed", true},
+			{"result", result},
+			{"delivered", time.Now()},
+		}},
+	}
+	res, err := s.collection.UpdateOne(ctx, filter, update)
+	return res.ModifiedCount, err
 }

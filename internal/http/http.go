@@ -31,6 +31,7 @@ func (r *Router) Start() {
 	rou.HandleFunc("/get_past_course_homeworks", r.GetPastCourseHomeworks)
 	rou.HandleFunc("/get_next_homeworks", r.GetNextHomeworks)
 	rou.HandleFunc("/info_course", r.GetInfoCourse)
+	rou.HandleFunc("/submit_homework", r.SubmitHomework)
 	rou.Use(r.UserAuthentication)
 
 	srv := &http.Server{

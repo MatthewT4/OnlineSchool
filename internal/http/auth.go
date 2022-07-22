@@ -39,8 +39,6 @@ func (rou *Router) UserAuthentication(next http.Handler) http.Handler {
 			http.Error(w, "not cookie", 401)
 			return
 		}
-		fmt.Println(cookie)
-		fmt.Println(cookie.Value)
 
 		userId, _, err := rou.BLogic.Authentication(cookie.Value)
 		if err != nil {

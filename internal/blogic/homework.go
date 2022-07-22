@@ -2,6 +2,7 @@ package blogic
 
 import (
 	"OnlineSchool/internal/structs"
+	mongodb "OnlineSchool/pkg/mongoDB"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -63,7 +64,6 @@ func (b *BLogic) GetHomework(userId int64, homeworkId int) (int, []byte) {
 	}
 	mapTasks, ok := b.getTasks(tasksId, handed)
 	if !ok {
-		fmt.Println(123)
 		return 500, []byte("Server error")
 	}
 	var returnTasks []retTask
@@ -125,7 +125,7 @@ func (b *BLogic) GetNextCourseHomeworks(userId int64, courseId int) (int, []byte
 	for _, val := range HwTemp {
 		NumberHws = append(NumberHws, val.HomeworkId)
 	}
-	HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), courseId, userId, NumberHws, true)
+	HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), userId, NumberHws, true)
 	if erro != nil && erro != mongo.ErrNoDocuments {
 		return 500, []byte("Server error")
 	}
@@ -197,7 +197,7 @@ func (b *BLogic) GetNextHomeworks(userId int64) (int, []byte) {
 		if len(NumberHws) == 0 {
 			continue
 		}
-		HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), course.CourseId, userId, NumberHws, true)
+		HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), userId, NumberHws, true)
 		fmt.Println("Hw.Temp", HwTemp)
 		fmt.Println("Hw.Save", HwSave)
 		if erro != nil && erro != mongo.ErrNilDocument {
@@ -240,6 +240,7 @@ func (b *BLogic) GetNextHomeworks(userId int64) (int, []byte) {
 }
 
 func (b *BLogic) GetPastCourseHomeworks(userId int64, courseId int) (int, []byte) {
+	fmt.Println(userId, courseId)
 	res, err := b.DBUser.GetCourses(context.TODO(), userId)
 	if err != nil {
 		return 404, []byte("not found")
@@ -248,6 +249,7 @@ func (b *BLogic) GetPastCourseHomeworks(userId int64, courseId int) (int, []byte
 		return 404, []byte("not found")
 	}
 	HwTemp, er := b.DBTempHomework.GetPastTempHomeworks(context.TODO(), courseId)
+	fmt.Println("past temp", HwTemp)
 	if er != nil {
 		if er == mongo.ErrNoDocuments {
 			return 200, []byte("[]")
@@ -259,7 +261,8 @@ func (b *BLogic) GetPastCourseHomeworks(userId int64, courseId int) (int, []byte
 	for _, val := range HwTemp {
 		NumberHws = append(NumberHws, val.HomeworkId)
 	}
-	HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), courseId, userId, NumberHws, false)
+	HwSave, erro := b.DBSaveHomework.GetSaveHomeworks(context.TODO(), userId, NumberHws, false)
+	fmt.Println("past save", HwSave)
 	if erro != nil && erro != mongo.ErrNoDocuments {
 		return 500, []byte("Server error")
 	}
@@ -270,7 +273,7 @@ func (b *BLogic) GetPastCourseHomeworks(userId int64, courseId int) (int, []byte
 		MaxPoints    int       `json:"max_points,omitempty"`
 		Delivered    time.Time `json:"delivered,omitempty"`
 		Handed       bool      `json:"handed"`
-		HomeworkId   int       `json:"homework_id,omitempty"`
+		HomeworkId   int       `json:"homework_id"`
 		Deadline     time.Time `json:"deadline,omitempty"`
 	}
 	mapRes := make(map[int]returnHws)
@@ -310,4 +313,112 @@ func (b *BLogic) GetPastCourseHomeworks(userId int64, courseId int) (int, []byte
 		return 500, []byte("Server error")
 	}
 	return 200, js
+}
+
+func (b *BLogic) CreateEmptySaveHw(ownerId int64, temp structs.HomeworkTemplate) error {
+	var tasks []structs.HomeworkTask
+	maxPoint := 0
+	for _, val := range temp.Tasks {
+		var vr structs.HomeworkTask
+		vr.Number = val.Number
+		vr.MaxPoint = val.MaxPoint
+		vr.UserAnswer = ""
+		tasks = append(tasks, vr)
+		maxPoint += val.MaxPoint
+	}
+	var saveHw structs.HomeworkSave
+	saveHw.Handed = false
+	saveHw.MaxPoints = maxPoint
+	saveHw.HomeworkId = temp.HomeworkId
+	saveHw.OwnerId = ownerId
+	saveHw.Tasks = tasks
+	err := b.DBSaveHomework.CreateSaveHw(context.TODO(), saveHw)
+	return err
+}
+func (b *BLogic) SubmitHomework(userId int64, homeworkId int, answers []structs.HomeworkTask) (int, string) {
+	//обработка крайних случаев
+	temp, er := b.DBTempHomework.GetHomework(context.TODO(), homeworkId)
+	if er != nil {
+		if er == mongo.ErrNoDocuments {
+			return 404, "not found"
+		}
+		return 500, "server error"
+	}
+
+	res, err := b.DBUser.GetCourses(context.TODO(), userId)
+	if err != nil {
+		return 400, "This homework not private user"
+	}
+	if !b.checkUserCourse(res, temp.CourseId) {
+		return 400, "This homework not private user"
+	}
+
+	save, err := b.DBSaveHomework.GetHomework(context.TODO(), userId, homeworkId)
+	if err == nil {
+		if save.Handed {
+			return 400, "hw submit already"
+		}
+	} else {
+		if err != mongo.ErrNoDocuments {
+			return 500, "server error"
+		}
+		err = b.CreateEmptySaveHw(userId, temp)
+		if err != nil && !mongodb.IsDuplicate(err) {
+			return 500, "server error"
+		}
+	}
+
+	//Сам обработчик
+	var tasksId []int
+	mapObrabot := make(map[int](structs.HomeworkTask)) //key = Number
+
+	//Наполяем задачами из tempHw
+	for _, val := range temp.Tasks {
+		tasksId = append(tasksId, val.TaskId)
+		mapObrabot[val.Number] = val
+	}
+	//вставляем ответы из запроса
+	for _, val := range answers {
+		_, ok := mapObrabot[val.Number]
+		if !ok {
+			return 400, "number response not found template homework"
+		}
+		vr := mapObrabot[val.Number]
+		vr.UserAnswer = val.UserAnswer
+		mapObrabot[val.Number] = vr
+	}
+
+	//получаем словарь самих задач, key = taskId
+	tasks, ok := b.getTasks(tasksId, true)
+	if !ok {
+		return 500, "Server error"
+	}
+
+	// Проверяем ответы и ставим баллы за них
+	overallResult := 0
+	for key, val := range mapObrabot {
+		vr := val
+		vr.MaxPoint = tasks[val.TaskId].MaxPoint
+		if tasks[val.TaskId].Handler == "" {
+			vr.Point = orderly(vr.UserAnswer, tasks[val.TaskId].Answers, tasks[val.TaskId].MaxPoint)
+			overallResult += vr.Point
+		}
+		mapObrabot[key] = vr
+		fmt.Println("vr:", mapObrabot[key])
+	}
+
+	// Превращаем словарь в массив
+	var masTasks []structs.HomeworkTask
+	for _, val := range mapObrabot {
+		masTasks = append(masTasks, val)
+	}
+	modifCount, e := b.DBSaveHomework.UpdateTasks(context.TODO(), homeworkId, userId, masTasks, overallResult)
+	if e != nil {
+		return 500, "update service error"
+	}
+	if modifCount == 0 {
+		return 400, "request incorrect"
+	}
+	return 200, "ok"
+
 }
