@@ -40,4 +40,5 @@ type IBLogic interface {
 	Login(VKCode string, redirectUrl string) (int, []byte, string /*cookie*/)
 	Authentication(token string) (int64, int, error)
 	SubmitHomework(userId int64, homeworkId int, answers []structs.HomeworkTask) (int, string)
+	GetActivePaymentsPeriod(userId int64) (int, []byte)
 }

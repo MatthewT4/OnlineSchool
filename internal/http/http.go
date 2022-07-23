@@ -19,8 +19,11 @@ func NewRouter(db *mongo.Database) *Router {
 
 func (r *Router) Start() {
 	ro := mux.NewRouter()
-	rScreen := ro.PathPrefix("/auth").Subrouter()
-	rScreen.HandleFunc("/login", r.Login)
+	rAuth := ro.PathPrefix("/auth").Subrouter()
+	rAuth.HandleFunc("/login", r.Login)
+	rService := ro.PathPrefix("/service").Subrouter()
+	rService.HandleFunc("/available_periods", r.AvailablePaymentPeriods)
+
 	rou := ro.PathPrefix("/").Subrouter()
 	rou.HandleFunc("/get_courses", r.GetCourses)
 	rou.HandleFunc("/get_next_webinars", r.GetNextWebinars)

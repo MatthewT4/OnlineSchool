@@ -193,7 +193,7 @@ func (b *BLogic) GetTodayWebinars(userId int64) (int, string) {
 		return mas[i].MeetDate.Before(mas[j].MeetDate)
 	})
 	re, erro := json.Marshal(&mas)
-	if err != nil {
+	if erro != nil {
 		fmt.Println(erro)
 		return 404, "not found"
 	}
