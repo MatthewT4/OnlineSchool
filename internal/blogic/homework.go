@@ -19,7 +19,7 @@ type retTask struct {
 	Solution    string   `json:"solution,omitempty"`
 	Written     bool     `json:"written"`
 	TypeAnswers []string `json:"type_answers,omitempty"`
-	UserPoint   int      `json:"user_point,omitempty"`
+	Point       int      `json:"point"`
 	MaxPoint    int      `json:"max_point"`
 }
 
@@ -78,7 +78,7 @@ func (b *BLogic) GetHomework(userId int64, homeworkId int) (int, []byte) {
 		vr.MaxPoint = task.MaxPoint
 		vr.UserAnswer = saveMap[value.TaskId].UserAnswer
 		if handed {
-			vr.UserPoint = saveMap[value.TaskId].Point
+			vr.Point = saveMap[value.TaskId].Point
 			vr.Answers = task.Answers
 			vr.Solution = task.Solution
 		}
