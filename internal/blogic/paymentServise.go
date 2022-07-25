@@ -17,8 +17,8 @@ func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 		PeriodId    int       `json:"period_id"`
 	}
 	var retStruct struct {
-		UserCourse      []course `json:"user_course,omitempty"`
-		AvailableCourse []course `json:"available_course"`
+		UserCourses      []course `json:"user_courses,omitempty"`
+		AvailableCourses []course `json:"available_courses"`
 	}
 	var masAddCourseId []int //saving courses from UserCourse to exclude them from AvailableCourse
 	if userId != -1 {
@@ -46,7 +46,7 @@ func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 						vr.PeriodEnd = v.EndDate
 						vr.CourseId = val.CourseId
 						masAddCourseId = append(masAddCourseId, val.CourseId)
-						retStruct.UserCourse = append(retStruct.UserCourse, vr)
+						retStruct.UserCourses = append(retStruct.UserCourses, vr)
 					}
 				}
 			}
@@ -63,7 +63,8 @@ func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 					vr.PeriodStart = v.StartDate
 					vr.PeriodEnd = v.EndDate
 					vr.CourseId = val.CourseId
-					retStruct.AvailableCourse = append(retStruct.AvailableCourse, vr)
+					vr.Price = v.Price
+					retStruct.AvailableCourses = append(retStruct.AvailableCourses, vr)
 					break
 				}
 			}
