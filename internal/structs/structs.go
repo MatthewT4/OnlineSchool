@@ -23,15 +23,16 @@ type PayPeriod struct {
 	PeriodId  int       `bson:"period_id"`
 	StartDate time.Time `bson:"start_date"`
 	EndDate   time.Time `bson:"end_date"`
-	Price     int       `bson:"price"`
+	Price     float64   `bson:"price"`
 }
 type Course struct {
-	CourseId       int         `bson:"course_id"`
-	NameCourse     string      `bson:"name_course"`
-	PaymentPeriods []PayPeriod `bson:"payment_periods"`
-	Teacher        string      `bson:"teacher"`
-	VkChat         string      `bson:"vk_chat"`
-	VkGroup        string      `bson:"vk_group"`
+	CourseId              int         `bson:"course_id"`
+	NameCourse            string      `bson:"name_course"`
+	PaymentPeriods        []PayPeriod `bson:"payment_periods"`
+	Teacher               string      `bson:"teacher"`
+	VkChat                string      `bson:"vk_chat"`
+	VkGroup               string      `bson:"vk_group"`
+	AvailableRegistration bool        `bson:"available_registration"`
 }
 type Webinar struct {
 	Name         string    `bson:"name"`
@@ -85,4 +86,55 @@ type HomeworkTemplate struct {
 	HomeworkId   int            `bson:"homework_id"`
 	Tasks        []HomeworkTask `bson:"tasks"`
 	MaxPoints    int            `bson:"max_points"`
+}
+type PayCourseType struct {
+	CourseId                  int
+	Periods                   []int   `bson:"periods"`
+	TotalPriceWithoutDiscount float64 `bson:"total_price_wo_dis"`
+}
+type Discount struct {
+	TypeDiscount int     `bson:"type_discount"`
+	DisAmount    float64 `bson:"discount_amount"`
+	PromoCode    string  `bson:"promo_code"`
+}
+type History struct {
+	ChangeDate time.Time `bson:"change_date"`
+	Status     int       `bson:"status"`
+	Comment    string    `bson:"comment"`
+}
+
+const ( //Status code
+	Registered  = iota
+	PreApproved //используется во время отключения платёжного шлюза, даёт доступ к курсу в полном объёме
+	PaymentApproved
+	PaymentRejected
+)
+
+type Payment struct {
+	Status         int             `bson:"status"`
+	PaymentId      string          `bson:"payment_id"`
+	UserId         int64           `bson:"user_id,omitempty"`
+	TotalAmount    float64         `bson:"total_amount"`
+	PayCourses     []PayCourseType `bson:"pay_courses"`
+	DiscountAmount float64         `bson:"discount_amount"`
+	Discounts      []Discount      `bson:"discounts,omitempty"`
+	ChangeHistory  []History       `bson:"change_history"`
+}
+
+//discount type
+const (
+	FixedDiscount = iota //==0
+	Percent              // ==1
+)
+
+type PromoCode struct {
+	PromoCode    string    `bson:"promo_code"`
+	TypeDiscount int       `bson:"type_discount"`
+	DisAmount    float64   `bson:"discount_amount"`
+	Infinite     bool      `bson:"infinite"` //ограниченный по количеству или нет (true == неограниченный)
+	NumberUses   int       `bson:"number_uses,omitempty"`
+	Uses         int       `bson:"uses,omitempty"`
+	ValidFrom    time.Time `bson:"valid_from"`  //действует с
+	ValidUntil   time.Time `bson:"valid_until"` //действует до
+	Owner        int64     `bson:"owner,omitempty"`
 }

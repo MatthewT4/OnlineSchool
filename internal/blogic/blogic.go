@@ -13,6 +13,7 @@ type BLogic struct {
 	DBSaveHomework DataBase.ISaveHomeworkDB
 	DBTempHomework DataBase.ITempHomeworkDB
 	DBTaskBank     DataBase.ITaskBankDB
+	DBPayment      DataBase.IPaymentDB
 	JWTManager     TokenManager
 }
 
@@ -23,6 +24,7 @@ func NewBLogic(db *mongo.Database) *BLogic {
 		DBSaveHomework: DataBase.NewSaveHomeworkDB(db),
 		DBTempHomework: DataBase.NewTempHomeworkDB(db),
 		DBTaskBank:     DataBase.NewTaskBankDB(db),
+		DBPayment:      DataBase.NewPaymentDBDB(db),
 		JWTManager:     NewManager("dffid324jnk3"),
 	}
 }
@@ -41,4 +43,5 @@ type IBLogic interface {
 	Authentication(token string) (int64, int, error)
 	SubmitHomework(userId int64, homeworkId int, answers []structs.HomeworkTask) (int, string)
 	GetActivePaymentsPeriod(userId int64) (int, []byte)
+	CreatePayment(buy []structs.PayCourseType, userId int64, promoCodes string) (int, []byte)
 }

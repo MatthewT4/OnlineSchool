@@ -23,6 +23,7 @@ func (r *Router) Start() {
 	rAuth.HandleFunc("/login", r.Login)
 	rService := ro.PathPrefix("/service").Subrouter()
 	rService.HandleFunc("/available_periods", r.AvailablePaymentPeriods)
+	rService.HandleFunc("/create_payment", r.CreatePayment)
 
 	rou := ro.PathPrefix("/").Subrouter()
 	rou.HandleFunc("/get_courses", r.GetCourses)

@@ -20,6 +20,7 @@ func NewUserDB(db *mongo.Database) *UserDB {
 	return &UserDB{collection: db.Collection(nameUserDB)}
 }
 
+//GetCourses returns all courses owned by the user (active and inactive)
 func (u *UserDB) GetCourses(ctx context.Context, userId int64) ([]structs.UserCourse, error) {
 	filter := bson.M{"user_id": userId}
 	var courses struct {
