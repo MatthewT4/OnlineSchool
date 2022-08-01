@@ -15,6 +15,7 @@ type PaymentDB struct {
 type IPaymentDB interface {
 	AddPayment(ctx context.Context, payment structs.Payment) (string, error)
 	FindPayment(ctx context.Context, paymentID string) (structs.Payment, error)
+	EditOwnerPayment(ctx context.Context, paymentId string, userId int64, historyElement structs.History) (int64, error)
 }
 
 func NewPaymentDBDB(db *mongo.Database) *PaymentDB {

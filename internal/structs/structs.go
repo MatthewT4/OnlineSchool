@@ -31,8 +31,10 @@ type Course struct {
 	PaymentPeriods        []PayPeriod `bson:"payment_periods"`
 	Teacher               string      `bson:"teacher"`
 	VkChat                string      `bson:"vk_chat"`
-	VkGroup               string      `bson:"vk_group"`
+	VkGroupLink           string      `bson:"vk_group_link"`
+	VkGroupId             string      `bson:"vk_group_id"`
 	AvailableRegistration bool        `bson:"available_registration"`
+	VkSecretKey           string      `bson:"vk_secret_key"`
 }
 type Webinar struct {
 	Name         string    `bson:"name"`
@@ -104,10 +106,10 @@ type History struct {
 }
 
 const ( //Status code
-	Registered  = iota
-	PreApproved //используется во время отключения платёжного шлюза, даёт доступ к курсу в полном объёме
-	PaymentApproved
-	PaymentRejected
+	Registered      = iota
+	PreApproved     //используется во время отключения платёжного шлюза, даёт доступ к курсу в полном объёме
+	PaymentApproved // одобрен
+	PaymentRejected // отклонён
 )
 
 type Payment struct {

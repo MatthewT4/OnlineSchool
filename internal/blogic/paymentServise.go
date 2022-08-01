@@ -368,7 +368,7 @@ func (b *BLogic) LinkingPaymentToUser(userId int64, paymentId string) (int, stri
 		if err == mongo.ErrNoDocuments {
 			return 400, "Payment not found"
 		}
-		return 500, "Server error"
+		return 500, "Server error (find payment)"
 	}
 	if res.UserId != 0 {
 		if res.UserId == userId {
@@ -376,6 +376,27 @@ func (b *BLogic) LinkingPaymentToUser(userId int64, paymentId string) (int, stri
 		}
 		return 400, "Payment linking to other user already"
 	}
+	his := structs.History{
+		Status:     res.Status,
+		ChangeDate: time.Now(),
+		Comment:    "Payment linking to the user",
+	}
 
-	return 200, ""
+	if res.Status == structs.PreApproved || res.Status == structs.PaymentApproved {
+		addRes, errr := b.addUserCourse(userId, res.PayCourses)
+		if !addRes {
+			fmt.Println("[LinkingPaymentToUser] (add user course):", errr.Error())
+			return 500, "Server error (add user course)"
+		}
+	}
+
+	updCound, e := b.DBPayment.EditOwnerPayment(context.TODO(), paymentId, userId, his)
+	if e != nil {
+		return 500, "Server Error (edit owner payment)"
+	}
+	if updCound == 0 {
+		return 400, "Bad Request"
+	}
+
+	return 200, "ОК"
 }

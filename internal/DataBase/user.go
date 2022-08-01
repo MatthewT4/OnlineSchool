@@ -14,6 +14,7 @@ type IUserDB interface {
 	GetCourses(ctx context.Context, userId int64) ([]structs.UserCourse, error)
 	GetUser(ctx context.Context, VKUserId int64) (structs.User, error)
 	CreateUser(ctx context.Context, user structs.User) error
+	EditUserCourses(ctx context.Context, userId int64, userCourses []structs.UserCourse) (int64, error)
 }
 
 func NewUserDB(db *mongo.Database) *UserDB {
@@ -40,4 +41,18 @@ func (u *UserDB) GetUser(ctx context.Context, VKUserId int64) (structs.User, err
 func (u *UserDB) CreateUser(ctx context.Context, user structs.User) error {
 	_, err := u.collection.InsertOne(ctx, user)
 	return err
+}
+
+func (u *UserDB) EditUserCourses(ctx context.Context, userId int64, userCourses []structs.UserCourse) (int64, error) {
+	filter := bson.M{
+		"user_id": userId,
+	}
+	update := bson.M{
+		"$set": bson.M{"buy_courses": userCourses},
+	}
+	res, err := u.collection.UpdateOne(ctx, filter, update)
+	if err == nil {
+		return res.ModifiedCount, nil
+	}
+	return 0, err
 }

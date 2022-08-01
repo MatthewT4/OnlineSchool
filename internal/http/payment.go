@@ -3,8 +3,10 @@ package http
 import (
 	"OnlineSchool/internal/structs"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 )
 
 // AvailablePaymentPeriods return periods user_course and periods available course
@@ -84,20 +86,53 @@ func (rou *Router) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	w.Write(mes)
 }
 
-/*
 func (rou *Router) LinkingPaymentToUser(w http.ResponseWriter, r *http.Request) {
 	cookie, er := r.Cookie("authToken")
 	if er != nil {
 		http.Error(w, "authToken not found", 401)
+		return
 	}
 	uId, _, err := rou.BLogic.Authentication(cookie.Value)
-	if err == nil {
+	if err != nil {
 		http.Error(w, "authToken is not valid", 401)
+		return
 	}
 
 	cookiePayment, e := r.Cookie("PaymentID")
 	if e != nil {
 		http.Error(w, "Payment cookie not found", 400)
+		return
 	}
 
-}*/
+	code, mes := rou.BLogic.LinkingPaymentToUser(uId, cookiePayment.Value)
+	fmt.Println(code, mes)
+	if code != 200 {
+		http.Error(w, mes, code)
+		return
+	}
+	w.Write([]byte(mes))
+}
+
+func (rou *Router) ConnectingCourseGroups(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value(UserId).(int64)
+	code, mes := rou.BLogic.CheckConnectingCourseGroups(userId)
+	if code != 200 {
+		http.Error(w, string(mes), code)
+	}
+	w.Write(mes)
+}
+
+func (rou *Router) InvitationLinkVkGroup(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value(UserId).(int64)
+	ci := r.URL.Query().Get("course_id")
+	courseId, er := strconv.Atoi(ci)
+	if er != nil {
+		http.Error(w, "type \"course_id\" is not valid", 500)
+		return
+	}
+	code, mes := rou.BLogic.GetInvitationLinkVkGroup(userId, courseId)
+	if code != 200 {
+		http.Error(w, string(mes), code)
+	}
+	w.Write(mes)
+}

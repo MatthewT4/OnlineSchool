@@ -44,4 +44,7 @@ type IBLogic interface {
 	SubmitHomework(userId int64, homeworkId int, answers []structs.HomeworkTask) (int, string)
 	GetActivePaymentsPeriod(userId int64) (int, []byte)
 	CreatePayment(buy []structs.PayCourseType, userId int64, promoCodes string) (int, []byte)
+	LinkingPaymentToUser(userId int64, paymentId string) (int, string)
+	CheckConnectingCourseGroups(userID int64) (int, []byte)
+	GetInvitationLinkVkGroup(userId int64, courseId int) (int, []byte)
 }

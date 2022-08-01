@@ -40,7 +40,7 @@ func (b *BLogic) Login(VKCode string, redirectUrl string) (int, []byte, string /
 	}
 	er := json.Unmarshal(byteData, &data)
 	if er != nil {
-
+		return 500, []byte("Server error"), ""
 	}
 	if data.Error != "" {
 		fmt.Println("error:", data.Error, data.ErrorDescription)
