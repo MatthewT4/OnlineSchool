@@ -62,6 +62,7 @@ func (b *BLogic) CheckConnectingCourseGroups(userID int64) (int, []byte) {
 	}
 	var retData []CourseConnect
 	for _, val := range user.BuyCourses {
+		fmt.Println("(for check connect): course =", val.CourseId)
 		if !val.Active {
 			continue
 		}
@@ -70,11 +71,13 @@ func (b *BLogic) CheckConnectingCourseGroups(userID int64) (int, []byte) {
 			continue
 		}
 		necessityAddingUser := b.checkNecessityAddingUserInGroup(user.VkId, course.VkGroupId, course.VkSecretKey)
+		fmt.Println("(for check connect): necessityAddingUser =", necessityAddingUser)
 		if necessityAddingUser {
 			var vr CourseConnect
 			vr.NameCourse = course.NameCourse
 			vr.CourseId = course.CourseId
 			retData = append(retData, vr)
+
 		}
 	}
 
@@ -82,6 +85,7 @@ func (b *BLogic) CheckConnectingCourseGroups(userID int64) (int, []byte) {
 	if errorr != nil {
 		return 500, []byte("server error marshal")
 	}
+	fmt.Println("ret:", string(ret), retData)
 	return 200, ret
 }
 
@@ -98,7 +102,16 @@ func (b *BLogic) checkNecessityAddingUserInGroup(vkIdUser int64, groupId string,
 		fmt.Println("[checkUserInGroup] (reading request data):", errReq.Error())
 		return false
 	}
-	if byteData[0] == '0' {
+	fmt.Println("[checkUserInGroup] (byteData):", string(byteData))
+	var resReq struct {
+		Response int `json:"response"`
+	}
+	eor := json.Unmarshal(byteData, &resReq)
+	if eor != nil {
+		fmt.Println("[checkUserInGroup] (json Unmarshal):", eor.Error())
+		return false
+	}
+	if resReq.Response == 0 {
 		return true
 	}
 	return false

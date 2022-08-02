@@ -82,6 +82,39 @@ func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 	return 200, re
 }
 
+/*
+func (b *BLogic) YearActivePaymentsPeriod(userId int64) (int, []byte) {
+	type course struct {
+		CourseId    int       `json:"course_id"`
+		PeriodStart time.Time `json:"period_start"`
+		PeriodEnd   time.Time `json:"period_end"`
+		Price       float64   `json:"price"`
+		Name        string    `json:"name"`
+		PeriodId    int       `json:"period_id"`
+	}
+	var retStruct struct {
+		UserCourses      []course `json:"user_courses,omitempty"`
+		AvailableCourses []course `json:"available_courses"`
+	}
+	if userId != -1 {
+		userCourse, err := b.DBUser.GetCourses(context.TODO(), userId)
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				return 401, []byte("Auth error")
+			}
+			return 500, []byte("Server error")
+		}
+		for _, val := range userCourse {
+			course, er := b.DBCourse.GetCourse(context.TODO(), val.CourseId)
+			if er != nil {
+				continue
+			}
+		}
+	}
+
+
+}*/
+
 func (b *BLogic) checkOpportunityToBuyCourse(courseId int, periodIds []int, userId int64) (bool, int /**int == result code*/) {
 	if len(periodIds) == 0 || len(periodIds) > 1 {
 		return false, 400
@@ -330,7 +363,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 	his.ChangeDate = time.Now()
 	payment.ChangeHistory = append(payment.ChangeHistory, his)
 
-	//Пока платёжного шлюза нет!!!
+	//!!!Пока платёжного шлюза нет!!!
 	var vrHis structs.History
 	vrHis.Status = structs.PreApproved
 	vrHis.ChangeDate = time.Now()
@@ -348,6 +381,14 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 		Total       float64 `json:"total"`
 		Status      int     `json:"status"`
 		Cookie      string  `json:"cookie"`
+	}
+
+	if payment.Status == structs.PreApproved || payment.Status == structs.PaymentApproved {
+		addRes, errr := b.addUserCourse(userId, payment.PayCourses)
+		if !addRes {
+			fmt.Println("[Create payment] (add user course):", errr.Error())
+			return 500, []byte("Server error  (add user course)")
+		}
 	}
 	data.PaymentName = "Оплата курсов Лицей15"
 	data.Total = payment.TotalAmount

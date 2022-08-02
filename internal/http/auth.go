@@ -44,6 +44,7 @@ func (rou *Router) UserAuthentication(next http.Handler) http.Handler {
 		if err != nil {
 			fmt.Println("Authentication error: ", err.Error())
 			http.Error(w, "not cookie", 401)
+			return
 		}
 		ctxt := context.WithValue(r.Context(), UserId, userId)
 		r = r.WithContext(ctxt)
@@ -82,6 +83,7 @@ func (rou *Router) Login(w http.ResponseWriter, r *http.Request) {
 	d, e := json.Marshal(&vr)
 	if e != nil {
 		http.Error(w, "server error", 500)
+		return
 	}
 	w.Write(d)
 }

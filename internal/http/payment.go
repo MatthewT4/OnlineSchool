@@ -118,6 +118,7 @@ func (rou *Router) ConnectingCourseGroups(w http.ResponseWriter, r *http.Request
 	code, mes := rou.BLogic.CheckConnectingCourseGroups(userId)
 	if code != 200 {
 		http.Error(w, string(mes), code)
+		return
 	}
 	w.Write(mes)
 }
