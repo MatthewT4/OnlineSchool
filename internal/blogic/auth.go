@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io/ioutil"
-	"log"
 	"math"
 	"net/http"
 	"strconv"
@@ -16,20 +15,22 @@ import (
 )
 
 const (
-	clientId = 8219136
-	secretId = "fobH7n71sa1Hhhl771Ek"
+	//clientId = 8219136
+	clientId = 51393056
+	//secretId = "fobH7n71sa1Hhhl771Ek"
+	secretId = "MH0KMvnyp2tDEUr60Ncw"
 )
 
 func (b *BLogic) Login(VKCode string, redirectUrl string) (int, []byte, string /*cookie*/) {
 	fmt.Println(VKCode)
 	res, err := http.Get(fmt.Sprintf("https://oauth.vk.com/access_token?code=%v&redirect_uri=%v&client_id=%v&client_secret=%v", VKCode, redirectUrl, clientId, secretId))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err.Error())
 	}
 	byteData, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err.Error())
 	}
 	var data struct {
 		AccessToken      string `json:"access_token,omitempty"`

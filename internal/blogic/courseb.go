@@ -15,13 +15,17 @@ func (b *BLogic) addUserCourse(userId int64, addCourse []structs.PayCourseType) 
 	if err != nil {
 		return false, err
 	}
+
 	var pushCourse []structs.UserCourse
 	for _, val := range addCourse {
 		searchCourse := true
-		for _, v := range userCourse {
+		for i := 0; i < len(userCourse); i++ {
+			v := userCourse[i]
 			if v.CourseId == val.CourseId && v.Active {
 				searchCourse = false
-				v.BuyPeriod = append(v.BuyPeriod, val.Periods...)
+				userCourse[i].BuyPeriod = append(userCourse[i].BuyPeriod, val.Periods...)
+				fmt.Println("period add: courseId:", v.CourseId, v.BuyPeriod, val.Periods, userCourse)
+				break
 			}
 		}
 		if searchCourse {
@@ -36,7 +40,10 @@ func (b *BLogic) addUserCourse(userId int64, addCourse []structs.PayCourseType) 
 		}
 	}
 	userCourse = append(userCourse, pushCourse...)
-
+	fmt.Println("USERiD:", userId)
+	for _, val := range userCourse {
+		fmt.Println("courseId:", val.CourseId, "buyPeriod:", val.BuyPeriod)
+	}
 	modifCound, er := b.DBUser.EditUserCourses(context.TODO(), userId, userCourse)
 	if er != nil {
 		return false, er

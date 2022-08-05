@@ -9,13 +9,26 @@ import (
 	"strconv"
 )
 
+func (rou *Router) servProm(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		//w.Header().Set("Access-Control-Allow-Origin", "https://lk.lyc15.ru")
+		//w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // AvailablePaymentPeriods return periods user_course and periods available course
 func (rou *Router) AvailablePaymentPeriods(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	/*//w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Origin", "https://lk.lyc15.ru")
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")*/
 
 	var userId int64 = -1
 	cookie, er := r.Cookie("authToken")
@@ -34,11 +47,11 @@ func (rou *Router) AvailablePaymentPeriods(w http.ResponseWriter, r *http.Reques
 }
 
 func (rou *Router) CreatePayment(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	/*w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")*/
 
 	var userId int64 = -1
 	cookie, er := r.Cookie("authToken")

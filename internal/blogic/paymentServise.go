@@ -382,12 +382,13 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 		Status      int     `json:"status"`
 		Cookie      string  `json:"cookie"`
 	}
-
-	if payment.Status == structs.PreApproved || payment.Status == structs.PaymentApproved {
-		addRes, errr := b.addUserCourse(userId, payment.PayCourses)
-		if !addRes {
-			fmt.Println("[Create payment] (add user course):", errr.Error())
-			return 500, []byte("Server error  (add user course)")
+	if payment.UserId != 0 {
+		if payment.Status == structs.PreApproved || payment.Status == structs.PaymentApproved {
+			addRes, errr := b.addUserCourse(userId, payment.PayCourses)
+			if !addRes {
+				fmt.Println("[Create payment] (add user course):", errr.Error())
+				return 500, []byte("Server error  (add user course)")
+			}
 		}
 	}
 	data.PaymentName = "Оплата курсов Лицей15"

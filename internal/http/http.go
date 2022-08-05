@@ -24,6 +24,7 @@ func (r *Router) Start() {
 	rService := ro.PathPrefix("/service").Subrouter()
 	rService.HandleFunc("/available_periods", r.AvailablePaymentPeriods)
 	rService.HandleFunc("/create_payment", r.CreatePayment)
+	rService.Use(r.servProm)
 
 	rou := ro.PathPrefix("/").Subrouter()
 	rou.HandleFunc("/get_courses", r.GetCourses)
@@ -41,6 +42,8 @@ func (r *Router) Start() {
 	rou.HandleFunc("/invitation_vk_link", r.InvitationLinkVkGroup)
 	rou.Use(r.UserAuthentication)
 
+	//http.Serve(autocert.NewListener("serv.lyc15.ru"), ro)
+	//http.Serve(ro)
 	srv := &http.Server{
 		Handler: ro,
 		Addr:    ":80",
@@ -48,6 +51,5 @@ func (r *Router) Start() {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-
 	log.Fatal(srv.ListenAndServe())
 }
