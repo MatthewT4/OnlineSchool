@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	//clientId = 8219136
-	clientId = 51393056
-	//secretId = "fobH7n71sa1Hhhl771Ek"
-	secretId = "MH0KMvnyp2tDEUr60Ncw"
+	clientId = 8219136
+	//clientId = 51393056
+	secretId = "fobH7n71sa1Hhhl771Ek"
+	//secretId = "MH0KMvnyp2tDEUr60Ncw"
 )
 
 func (b *BLogic) Login(VKCode string, redirectUrl string) (int, []byte, string /*cookie*/) {
@@ -58,12 +58,13 @@ func (b *BLogic) Login(VKCode string, redirectUrl string) (int, []byte, string /
 		if errr != nil {
 			return 500, []byte("Server error"), ""
 		}
-		token, eo := b.JWTManager.NewJWT(string(id), time.Hour*24*30)
+		token, eo := b.JWTManager.NewJWT(strconv.FormatInt(id, 10), time.Hour*24*30)
 		if eo != nil {
 			return 500, []byte("Server error"), token
 		}
 		return 200, []byte(string(id)), token
 	}
+
 	token, eo := b.JWTManager.NewJWT(strconv.FormatInt(user.UserId, 10), time.Hour*24*30)
 	if eo != nil {
 		return 500, []byte("Server error"), token
@@ -106,6 +107,7 @@ func (b *BLogic) createUser(VkUserId int64, accessToken string) (userId int64, e
 	user.LastName = us.Response[0].LastName
 	user.UserId = VkUserId
 	user.BuyCourses = append(user.BuyCourses, structs.UserCourse{CourseId: 0, Active: false})
+	user.RegisterDate = time.Now()
 	fmt.Println(us)
 	errorr := b.DBUser.CreateUser(context.TODO(), user)
 	if errorr != nil {

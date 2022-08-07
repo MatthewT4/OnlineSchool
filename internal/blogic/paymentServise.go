@@ -223,20 +223,20 @@ func (b *BLogic) checkOpportunityToBuyCourse(courseId int, periodIds []int, user
 	return false, 400
 }
 
-func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoCodes string) (int, []byte) {
+func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoCodes string) (int, []byte, http.Cookie) {
 	//check valid request
 	fmt.Println("UID:", userId)
 	for _, val := range buy {
 		res, code := b.checkOpportunityToBuyCourse(val.CourseId, val.Periods, userId)
 		if !res {
 			if code == 400 {
-				return code, []byte("request validation error")
+				return code, []byte("request validation error"), http.Cookie{}
 			}
-			return code, []byte("server error (validation)")
+			return code, []byte("server error (validation)"), http.Cookie{}
 		}
 	}
 	if len(buy) == 0 {
-		return 400, []byte("request validation error")
+		return 400, []byte("request validation error"), http.Cookie{}
 	}
 	var payment structs.Payment
 	if userId != -1 {
@@ -246,7 +246,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 	for _, val := range buy {
 		course, err := b.DBCourse.GetCourse(context.TODO(), val.CourseId)
 		if err != nil {
-			return 500, []byte("server error")
+			return 500, []byte("server error"), http.Cookie{}
 		}
 
 		var courseBuy structs.PayCourseType
@@ -257,7 +257,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 			if userId != -1 {
 				userCourse, er := b.DBUser.GetCourses(context.TODO(), userId)
 				if er != nil && er != mongo.ErrNoDocuments {
-					return 500, []byte("server error")
+					return 500, []byte("server error"), http.Cookie{}
 				}
 				searchFlag := false
 				var userPer []int
@@ -283,7 +283,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 						}
 					}
 					if len(courseBuy.Periods) == 0 {
-						return 400, []byte("request error")
+						return 400, []byte("request error"), http.Cookie{}
 					}
 				}
 			}
@@ -291,7 +291,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 			if len(courseBuy.Periods) == 0 { // исключаем случаи когда userId != -1 and searchFlag == true
 
 				if !course.AvailableRegistration {
-					return 400, []byte("request error")
+					return 400, []byte("request error"), http.Cookie{}
 				}
 
 				for _, v := range course.PaymentPeriods {
@@ -301,7 +301,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 					}
 				}
 				if len(courseBuy.Periods) == 0 {
-					return 400, []byte("request error")
+					return 400, []byte("request error"), http.Cookie{}
 				}
 			}
 
@@ -309,7 +309,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 			if userId != -1 {
 				userCourse, er := b.DBUser.GetCourses(context.TODO(), userId)
 				if er != nil && er != mongo.ErrNoDocuments {
-					return 500, []byte("server error")
+					return 500, []byte("server error"), http.Cookie{}
 				}
 				searchFlag := false
 				var userPer []int
@@ -338,7 +338,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 			}
 			if len(courseBuy.Periods) == 0 {
 				if !course.AvailableRegistration {
-					return 400, []byte("request error")
+					return 400, []byte("request error"), http.Cookie{}
 				}
 				for _, v := range course.PaymentPeriods {
 					if v.PeriodId == val.Periods[0] && v.EndDate.After(time.Now()) {
@@ -349,13 +349,13 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 			}
 		}
 		if len(courseBuy.Periods) == 0 {
-			return 400, []byte("periods incorrect")
+			return 400, []byte("periods incorrect"), http.Cookie{}
 		}
 		payment.TotalAmount += courseBuy.TotalPriceWithoutDiscount
 		payment.PayCourses = append(payment.PayCourses, courseBuy)
 	}
 	if len(payment.PayCourses) == 0 {
-		return 500, []byte("Server error (courses array == 0)")
+		return 500, []byte("Server error (courses array == 0)"), http.Cookie{}
 	}
 
 	var his structs.History
@@ -373,7 +373,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 	payId, e := b.DBPayment.AddPayment(context.TODO(), payment)
 	if e != nil {
 		fmt.Println(e.Error())
-		return 500, []byte("server error")
+		return 500, []byte("server error"), http.Cookie{}
 	}
 	var data struct {
 		PaymentName string  `json:"payment_name"`
@@ -387,7 +387,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 			addRes, errr := b.addUserCourse(userId, payment.PayCourses)
 			if !addRes {
 				fmt.Println("[Create payment] (add user course):", errr.Error())
-				return 500, []byte("Server error  (add user course)")
+				return 500, []byte("Server error  (add user course)"), http.Cookie{}
 			}
 		}
 	}
@@ -399,9 +399,9 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 	data.Cookie = coc.String()
 	js, er := json.Marshal(&data)
 	if er != nil {
-		return 500, []byte("server error")
+		return 500, []byte("server error"), http.Cookie{}
 	}
-	return 200, js
+	return 200, js, coc
 }
 
 func (b *BLogic) LinkingPaymentToUser(userId int64, paymentId string) (int, string) {

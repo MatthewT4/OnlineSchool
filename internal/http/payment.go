@@ -89,13 +89,13 @@ func (rou *Router) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		blData = append(blData, vr)
 	}
 
-	code, mes := rou.BLogic.CreatePayment(blData, userId, "")
+	code, mes, cookiee := rou.BLogic.CreatePayment(blData, userId, "")
 
 	if code != 200 {
 		http.Error(w, string(mes), code)
 		return
 	}
-
+	http.SetCookie(w, &cookiee)
 	w.Write(mes)
 }
 

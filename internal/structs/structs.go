@@ -11,12 +11,13 @@ type UserCourse struct {
 	Active      bool  `bson:"active"`
 }
 type User struct {
-	UserId     int64        `bson:"user_id"`
-	VkId       int64        `bson:"vk_id"`
-	Avatar     string       `bson:"avatar"`
-	BuyCourses []UserCourse `bson:"buy_courses"`
-	FirstName  string       `bson:"first_name"`
-	LastName   string       `bson:"last_name"`
+	UserId       int64        `bson:"user_id"`
+	VkId         int64        `bson:"vk_id"`
+	Avatar       string       `bson:"avatar"`
+	BuyCourses   []UserCourse `bson:"buy_courses"`
+	FirstName    string       `bson:"first_name"`
+	LastName     string       `bson:"last_name"`
+	RegisterDate time.Time    `bson:"register_date"`
 }
 
 type PayPeriod struct {

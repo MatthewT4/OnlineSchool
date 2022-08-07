@@ -64,8 +64,8 @@ func (rou *Router) Login(w http.ResponseWriter, r *http.Request) {
 
 	code, mes, token := rou.BLogic.Login(cVK, red)
 	fmt.Println(2)
-	//w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-	w.Header().Set("Access-Control-Allow-Origin", "https://lk.lyc15.ru")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	//w.Header().Set("Access-Control-Allow-Origin", "https://lk.lyc15.ru")
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
@@ -75,7 +75,8 @@ func (rou *Router) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(mes), code)
 		return
 	}
-	cookie := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), SameSite: 4, Secure: true, Path: "/", Domain: "serv.lyc15.ru"}
+	//cookie := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), SameSite: 4, Secure: true, Path: "/", Domain: "serv.lyc15.ru"}
+	cookie := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), SameSite: 4, Secure: true, Path: "/", Domain: "localhost"}
 	http.SetCookie(w, &cookie)
 	var vr struct {
 		Body string `json:"body"`
