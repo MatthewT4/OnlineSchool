@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	clientId = 8219136
-	//clientId = 51393056
-	secretId = "fobH7n71sa1Hhhl771Ek"
-	//secretId = "MH0KMvnyp2tDEUr60Ncw"
+	//clientId = 8219136
+	//secretId = "fobH7n71sa1Hhhl771Ek"
+	clientId = 51393056
+	secretId = "MH0KMvnyp2tDEUr60Ncw"
 )
 
 func (b *BLogic) Login(VKCode string, redirectUrl string) (int, []byte, string /*cookie*/) {

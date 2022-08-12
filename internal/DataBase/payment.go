@@ -16,6 +16,7 @@ type IPaymentDB interface {
 	AddPayment(ctx context.Context, payment structs.Payment) (string, error)
 	FindPayment(ctx context.Context, paymentID string) (structs.Payment, error)
 	EditOwnerPayment(ctx context.Context, paymentId string, userId int64, historyElement structs.History) (int64, error)
+	EditStatus(ctx context.Context, paymentId string, historyElement structs.History, status int) (int64, error)
 }
 
 func NewPaymentDBDB(db *mongo.Database) *PaymentDB {
@@ -62,6 +63,23 @@ func (p *PaymentDB) EditOwnerPayment(ctx context.Context, paymentId string, user
 	update := bson.M{
 		"$set": bson.M{
 			"user_id": userId,
+		},
+		"$push": bson.M{
+			"change_history": historyElement,
+		},
+	}
+
+	res, err := p.collection.UpdateOne(ctx, filter, update)
+	return res.ModifiedCount, err
+}
+
+func (p *PaymentDB) EditStatus(ctx context.Context, paymentId string, historyElement structs.History, status int) (int64, error) {
+	filter := bson.M{
+		"payment_id": paymentId,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"status": status,
 		},
 		"$push": bson.M{
 			"change_history": historyElement,

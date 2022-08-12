@@ -94,6 +94,7 @@ type PayCourseType struct {
 	CourseId                  int
 	Periods                   []int   `bson:"periods"`
 	TotalPriceWithoutDiscount float64 `bson:"total_price_wo_dis"`
+	TotalPrice                float64 `bson:"total_price"`
 }
 type Discount struct {
 	TypeDiscount int     `bson:"type_discount"`
@@ -122,6 +123,17 @@ type Payment struct {
 	DiscountAmount float64         `bson:"discount_amount"`
 	Discounts      []Discount      `bson:"discounts,omitempty"`
 	ChangeHistory  []History       `bson:"change_history"`
+}
+
+type CloudPaymentReq struct {
+	TransactionId int64
+	Amount        float64
+	Currency      string
+	DateTime      time.Time
+	Status        string
+	OperationType string
+	InvoiceId     string
+	AccountId     int64
 }
 
 //discount type

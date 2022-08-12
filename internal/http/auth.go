@@ -14,7 +14,7 @@ const (
 
 func (rou *Router) UserAuthentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Origin", Domain)
 		//w.Header().Set("Access-Control-Allow-Origin", "https://lk.lyc15.ru")
 		//w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -64,7 +64,7 @@ func (rou *Router) Login(w http.ResponseWriter, r *http.Request) {
 
 	code, mes, token := rou.BLogic.Login(cVK, red)
 	fmt.Println(2)
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Origin", Domain)
 	//w.Header().Set("Access-Control-Allow-Origin", "https://lk.lyc15.ru")
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -76,12 +76,12 @@ func (rou *Router) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//cookie := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), SameSite: 4, Secure: true, Path: "/", Domain: "serv.lyc15.ru"}
-	cookie := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), SameSite: 4, Secure: true, Path: "/", Domain: "localhost"}
+	cookie := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), SameSite: 4, Secure: true, Path: "/", Domain: ServDomain}
 	http.SetCookie(w, &cookie)
 	var vr struct {
 		Body string `json:"body"`
 	}
-	coc := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), Path: "/", Domain: "serv.lyc15.ru"} //https://serv.lyc15.ru
+	coc := http.Cookie{Name: "authToken", Value: token, Expires: time.Now().Add(time.Hour * 24 * 30), Path: "/", Domain: ServDomain} //https://serv.lyc15.ru
 	vr.Body = coc.String()
 	d, e := json.Marshal(&vr)
 	if e != nil {

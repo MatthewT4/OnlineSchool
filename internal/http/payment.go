@@ -2,6 +2,7 @@ package http
 
 import (
 	"OnlineSchool/internal/structs"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,7 +12,7 @@ import (
 
 func (rou *Router) servProm(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Origin", Domain)
 		//w.Header().Set("Access-Control-Allow-Origin", "https://lk.lyc15.ru")
 		//w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -47,12 +48,6 @@ func (rou *Router) AvailablePaymentPeriods(w http.ResponseWriter, r *http.Reques
 }
 
 func (rou *Router) CreatePayment(w http.ResponseWriter, r *http.Request) {
-	/*w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-	//w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")*/
-
 	var userId int64 = -1
 	cookie, er := r.Cookie("authToken")
 	if er == nil {
@@ -149,4 +144,155 @@ func (rou *Router) InvitationLinkVkGroup(w http.ResponseWriter, r *http.Request)
 		http.Error(w, string(mes), code)
 	}
 	w.Write(mes)
+}
+
+//CloudPayments functions!!
+
+func (rou *Router) CheckPayment(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("CheckPayment")
+	body, errorr := ioutil.ReadAll(r.Body)
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	//reader := strings.NewReader(string(body))
+	if errorr != nil {
+		fmt.Println("[HTTP CheckPayment] (readAll body error):", errorr.Error())
+		w.Write([]byte("{\"code\":13}"))
+		return
+	}
+	//fmt.Println(body)
+	err := r.ParseForm()
+	if err != nil {
+		fmt.Println("err ParseForm:", err.Error())
+		w.Write([]byte("{\"code\":13}"))
+		return
+	}
+	fmt.Println("FORM", r.Form)
+	var payment structs.CloudPaymentReq
+	transaction := r.Form.Get("TransactionId")
+	if transaction == "" {
+		fmt.Println("[HTTP CheckPayment]: code 13")
+		w.Write([]byte("{\"code\":13}"))
+		return
+	}
+	PayCloudPaymentsId, erro := strconv.ParseInt(transaction, 10, 64)
+	if erro != nil {
+		fmt.Println("[HTTP CheckPayment]: code 13")
+		w.Write([]byte("{\"code\":13}"))
+		return
+	}
+	payment.TransactionId = PayCloudPaymentsId
+
+	amount := r.Form.Get("Amount")
+	if amount == "" {
+		fmt.Println("[HTTP CheckPayment]: code 12")
+		w.Write([]byte("{\"code\":13}"))
+		return
+	}
+	total, er := strconv.ParseFloat(amount, 64)
+	if er != nil {
+		fmt.Println("[HTTP CheckPayment]: code 12")
+		w.Write([]byte("{\"code\":12}"))
+		return
+	}
+	payment.Amount = total
+
+	currency := r.Form.Get("Currency")
+	if currency == "" {
+		fmt.Println("[HTTP CheckPayment]: code 12")
+		w.Write([]byte("{\"code\":13}"))
+		return
+	}
+	payment.Currency = currency
+
+	invoceId := r.Form.Get("InvoiceId")
+	if invoceId == "" {
+		fmt.Println("[HTTP CheckPayment]: code 10")
+		w.Write([]byte("{\"code\":10}"))
+		return
+	}
+
+	payment.InvoiceId = invoceId
+
+	userId := r.Form.Get("AccountId")
+	if userId != "" {
+		uIdInt, e := strconv.ParseInt(userId, 10, 64)
+		if e == nil {
+			payment.AccountId = uIdInt
+		}
+	}
+
+	//fmt.Println("[Check Payment] payment:", payment)
+	//fmt.Println("[HTTP CheckPayment] (X-Content-HMAC):", r.Header.Get("X-Content-HMAC"))
+	hmacHead := r.Header.Get("Content-HMAC")
+	w.Write(rou.BLogic.CheckPayment(payment, body, hmacHead))
+	return
+}
+
+func (rou *Router) RegisterApprovedPayment(w http.ResponseWriter, r *http.Request) {
+
+	body, errorr := ioutil.ReadAll(r.Body)
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	//reader := strings.NewReader(string(body))
+	if errorr != nil {
+		fmt.Println("[HTTP RegisterApprovedPayment] (readAll body error):", errorr.Error())
+	}
+	//fmt.Println(body)
+	err := r.ParseForm()
+	if err != nil {
+		fmt.Println("err ParseForm:", err.Error())
+
+	}
+	fmt.Println("FORM", r.Form)
+	var payment structs.CloudPaymentReq
+	transaction := r.Form.Get("TransactionId")
+	if transaction == "" {
+		fmt.Println("[HTTP RegisterApprovedPayment]: code 13")
+
+	}
+	PayCloudPaymentsId, erro := strconv.ParseInt(transaction, 10, 64)
+	if erro != nil {
+		fmt.Println("[HTTP RegisterApprovedPayment]: code 13")
+
+	}
+	payment.TransactionId = PayCloudPaymentsId
+
+	amount := r.Form.Get("Amount")
+	if amount == "" {
+		fmt.Println("[HTTP RegisterApprovedPayment]: code 12")
+
+	}
+	total, er := strconv.ParseFloat(amount, 64)
+	if er != nil {
+		fmt.Println("[HTTP RegisterApprovedPayment]: code 12")
+
+	}
+	payment.Amount = total
+
+	currency := r.Form.Get("Currency")
+	if currency == "" {
+		fmt.Println("[HTTP RegisterApprovedPayment]: code 12")
+
+	}
+	payment.Currency = currency
+
+	invoceId := r.Form.Get("InvoiceId")
+	if invoceId == "" {
+		fmt.Println("[HTTP RegisterApprovedPayment]: code 10")
+
+	}
+
+	payment.InvoiceId = invoceId
+
+	userId := r.Form.Get("AccountId")
+	if userId != "" {
+		uIdInt, e := strconv.ParseInt(userId, 10, 64)
+		if e == nil {
+			payment.AccountId = uIdInt
+		}
+	}
+	//fmt.Println("[Check Payment] payment:", payment)
+	//fmt.Println("[HTTP CheckPayment] (X-Content-HMAC):", r.Header.Get("X-Content-HMAC"))
+	hmacHead := r.Header.Get("Content-HMAC")
+	w.Write(rou.BLogic.RegisterApprovedPayment(payment, body, hmacHead))
+	//w.Write([]byte("{\"code\":0}"))
+	return
 }

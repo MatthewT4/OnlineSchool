@@ -3,21 +3,31 @@ package blogic
 import (
 	"OnlineSchool/internal/structs"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
+	"strconv"
 	"time"
+)
+
+const (
+	CpSecret = "210910163250f488da40c0b4e575ed45"
 )
 
 func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 	type course struct {
-		CourseId    int       `json:"course_id"`
-		PeriodStart time.Time `json:"period_start"`
-		PeriodEnd   time.Time `json:"period_end"`
-		Price       float64   `json:"price"`
-		Name        string    `json:"name"`
-		PeriodId    int       `json:"period_id"`
+		CourseId              int       `json:"course_id"`
+		PeriodStart           time.Time `json:"period_start"`
+		PeriodEnd             time.Time `json:"period_end"`
+		Price                 float64   `json:"price"`
+		Name                  string    `json:"name"`
+		PeriodId              int       `json:"period_id"`
+		AvailableBuyAllPeriod bool      `json:"buy_all_period"`
+		PriceAllPeriod        float64   `json:"price_all_period"`
 	}
 	var retStruct struct {
 		UserCourses      []course `json:"user_courses,omitempty"`
@@ -49,10 +59,11 @@ func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 						vr.PeriodStart = v.StartDate
 						vr.PeriodEnd = v.EndDate
 						vr.CourseId = val.CourseId
-						masAddCourseId = append(masAddCourseId, val.CourseId)
+						//masAddCourseId = append(masAddCourseId, val.CourseId)
 						retStruct.UserCourses = append(retStruct.UserCourses, vr)
 					}
 				}
+				masAddCourseId = append(masAddCourseId, val.CourseId)
 			}
 		}
 	}
@@ -252,6 +263,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 		var courseBuy structs.PayCourseType
 		courseBuy.CourseId = course.CourseId
 		courseBuy.TotalPriceWithoutDiscount = 0
+		courseBuy.TotalPrice = 0
 		//buy all periods
 		if val.Periods[0] == -1 {
 			if userId != -1 {
@@ -280,6 +292,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 						if v.PeriodId > maxUserPer {
 							courseBuy.Periods = append(courseBuy.Periods, v.PeriodId)
 							courseBuy.TotalPriceWithoutDiscount += v.Price
+							courseBuy.TotalPrice += v.Price
 						}
 					}
 					if len(courseBuy.Periods) == 0 {
@@ -298,6 +311,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 					if v.EndDate.After(time.Now()) { //EndDate > time.Now
 						courseBuy.Periods = append(courseBuy.Periods, v.PeriodId)
 						courseBuy.TotalPriceWithoutDiscount += v.Price
+						courseBuy.TotalPrice += v.Price
 					}
 				}
 				if len(courseBuy.Periods) == 0 {
@@ -331,6 +345,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 						if uv.PeriodId == maxUserPer+1 {
 							courseBuy.Periods = append(courseBuy.Periods, uv.PeriodId)
 							courseBuy.TotalPriceWithoutDiscount += uv.Price
+							courseBuy.TotalPrice += uv.Price
 							break
 						}
 					}
@@ -344,6 +359,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 					if v.PeriodId == val.Periods[0] && v.EndDate.After(time.Now()) {
 						courseBuy.Periods = append(courseBuy.Periods, v.PeriodId)
 						courseBuy.TotalPriceWithoutDiscount += v.Price
+						courseBuy.TotalPrice += v.Price
 					}
 				}
 			}
@@ -364,23 +380,41 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 	payment.ChangeHistory = append(payment.ChangeHistory, his)
 
 	//!!!Пока платёжного шлюза нет!!!
-	var vrHis structs.History
+	/*var vrHis structs.History
 	vrHis.Status = structs.PreApproved
 	vrHis.ChangeDate = time.Now()
 	payment.ChangeHistory = append(payment.ChangeHistory, vrHis)
-	payment.Status = structs.PreApproved
+	payment.Status = structs.PreApproved*/
 
 	payId, e := b.DBPayment.AddPayment(context.TODO(), payment)
 	if e != nil {
 		fmt.Println(e.Error())
 		return 500, []byte("server error"), http.Cookie{}
 	}
+
+	type ReceiptItem struct { //товар в чеке
+		Label    string `json:"Label"`
+		Price    string `json:"Price"`
+		Quantity string `Json:"Quantity"`
+		Vat      string `json:"Vat"`
+		Amount   string `json:"Amount"`
+	}
+	type AmountsType struct {
+		Electronic string `json:"Electronic"`
+	}
+	type Receipt struct { //чек
+		Items   []ReceiptItem `json:"Items"`
+		Amounts AmountsType   `json:"Amounts"`
+	}
+
 	var data struct {
 		PaymentName string  `json:"payment_name"`
 		PaymentId   string  `json:"payment_id"`
 		Total       float64 `json:"total"`
 		Status      int     `json:"status"`
 		Cookie      string  `json:"cookie"`
+		UserId      int64   `json:"user_id"`
+		ReceiptRet  Receipt `json:"receipt"`
 	}
 	if payment.UserId != 0 {
 		if payment.Status == structs.PreApproved || payment.Status == structs.PaymentApproved {
@@ -391,10 +425,66 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 			}
 		}
 	}
+	monthConst := [12]string{"Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"}
+
+	for _, rVal := range payment.PayCourses {
+		course, erCo := b.DBCourse.GetCourse(context.TODO(), rVal.CourseId)
+		if erCo != nil {
+			return 500, []byte("er"), http.Cookie{}
+		}
+		var vr ReceiptItem
+		vr.Price = fmt.Sprint(rVal.TotalPriceWithoutDiscount)
+		vr.Amount = fmt.Sprint(rVal.TotalPrice)
+		vr.Vat = "20"
+		vr.Quantity = "1"
+
+		if len(rVal.Periods) == 1 {
+			month := 1
+			year := 2022
+			for _, per := range course.PaymentPeriods {
+				if per.PeriodId == rVal.Periods[0] {
+					month = int(per.StartDate.Month())
+					year = per.StartDate.Year()
+				}
+			}
+			vr.Label = "Оплата доступа к разделу " + course.NameCourse + " на " + monthConst[month] + " " + strconv.Itoa(year) + " года"
+		} else {
+			startMonth := 1
+			startYear := 2022
+			endMonth := 1
+			endYear := 2022
+			minPer := -100
+			maxPer := -100
+			for _, per := range rVal.Periods {
+				if minPer == -100 || per < minPer {
+					minPer = per
+				}
+				if maxPer == -100 || per > maxPer {
+					maxPer = per
+				}
+			}
+			for _, per := range course.PaymentPeriods {
+				if per.PeriodId == minPer {
+					startMonth = int(per.StartDate.Month())
+					startYear = per.StartDate.Year()
+				}
+				if per.PeriodId == maxPer {
+					endMonth = int(per.StartDate.Month())
+					endYear = per.StartDate.Year()
+				}
+			}
+			vr.Label = "Оплата доступа к разделу " + course.NameCourse + " на " + monthConst[startMonth] + " " + strconv.Itoa(startYear) + " года - " + monthConst[endMonth] + " " + strconv.Itoa(endYear) + " года"
+		}
+		data.ReceiptRet.Items = append(data.ReceiptRet.Items, vr)
+	}
+	data.ReceiptRet.Amounts.Electronic = fmt.Sprint(payment.TotalAmount)
+
 	data.PaymentName = "Оплата курсов Лицей15"
 	data.Total = payment.TotalAmount
 	data.PaymentId = payId
 	data.Status = payment.Status
+	data.UserId = payment.UserId
+
 	coc := http.Cookie{Name: "PaymentID", Value: payId, Expires: time.Now().Add(time.Hour * 24 * 10), Path: "/"}
 	data.Cookie = coc.String()
 	js, er := json.Marshal(&data)
@@ -441,4 +531,112 @@ func (b *BLogic) LinkingPaymentToUser(userId int64, paymentId string) (int, stri
 	}
 
 	return 200, "ОК"
+}
+
+//CloudPayments servises
+/*
+func (b *BLogic) addedNewHistoryEntry(paymentId string, Entry string) bool {
+	payment, err := b.DBPayment.FindPayment(context.TODO(), paymentId)
+	if err != nil {
+		return false
+	}
+	payment.
+}*/
+
+func (b *BLogic) CheckPayment(CPPayment structs.CloudPaymentReq, data []byte, contextHmac string) []byte {
+	//fmt.Println("[CheckPayment] (ComputeHmac256):",ComputeHmac256(data))
+	if ComputeHmac256(data) != contextHmac {
+		fmt.Println("[CheckPayment] HMAC in request and HMAC calculated in server not request:", contextHmac, "calculated in server:", ComputeHmac256(data))
+		return []byte("{\"code\":13}")
+	}
+
+	fmt.Println("[CheckPayment] payment in request:", CPPayment)
+	payment, err := b.DBPayment.FindPayment(context.TODO(), CPPayment.InvoiceId)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			fmt.Println("[CheckPayment] (BLogic): Payment", CPPayment.InvoiceId, "not found")
+			return []byte("{\"code\":10}")
+		}
+		fmt.Println("[CheckPayment] (BLogic): Payment", CPPayment.InvoiceId, "server error")
+		return []byte("{\"code\":13}")
+	}
+
+	if CPPayment.AccountId != payment.UserId {
+		fmt.Println("[CheckPayment] (BLogic): Payment", CPPayment.InvoiceId, "User not valid")
+		return []byte("{\"code\":11}")
+	}
+
+	if payment.TotalAmount != CPPayment.Amount {
+		fmt.Println("[CheckPayment] (BLogic): Payment", CPPayment.InvoiceId, "Price not valid")
+		return []byte("{\"code\":12}")
+	}
+
+	if CPPayment.Currency != "RUB" {
+		fmt.Println("[CheckPayment] (BLogic): Payment", CPPayment.InvoiceId, "Currency not valid")
+		return []byte("{\"code\":12}")
+	}
+	fmt.Println("[CheckPayment] (BLogic): Payment", CPPayment.InvoiceId, "OK")
+	return []byte("{\"code\":0}")
+}
+
+func (b *BLogic) RegisterApprovedPayment(CPPayment structs.CloudPaymentReq, data []byte, contextHmac string) []byte {
+	if ComputeHmac256(data) != contextHmac {
+		fmt.Println("[RegisterApprovedPayment] HMAC in request and HMAC calculated in server not request:", contextHmac, "calculated in server:", ComputeHmac256(data))
+		return []byte("error")
+	}
+
+	fmt.Println("[RegisterApprovedPayment] payment in request:", CPPayment)
+	payment, err := b.DBPayment.FindPayment(context.TODO(), CPPayment.InvoiceId)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			fmt.Println("[RegisterApprovedPayment] (BLogic): Payment", CPPayment.InvoiceId, "not found")
+			return []byte("payment not found")
+		}
+		fmt.Println("[RegisterApprovedPayment] (BLogic): Payment", CPPayment.InvoiceId, "server error")
+		return []byte("server error")
+	}
+
+	if payment.UserId != CPPayment.AccountId {
+		fmt.Println("[RegisterApprovedPayment] (BLogic): Payment", CPPayment.InvoiceId, "userId not valid")
+		return []byte("userId not valid")
+	}
+
+	if CPPayment.Amount != payment.TotalAmount {
+		fmt.Println("[RegisterApprovedPayment] (BLogic): Payment", CPPayment.InvoiceId, "amount not valid")
+		return []byte("amount not valid")
+	}
+
+	var his structs.History
+	his.Status = structs.PaymentApproved
+	his.ChangeDate = time.Now()
+	his.Comment = "TransactionId in CloudPayment: " + strconv.FormatInt(CPPayment.TransactionId, 10)
+	/*payment.ChangeHistory = append(payment.ChangeHistory, his)
+
+	payment.Status = structs.PaymentApproved
+	b.DBPayment.*/
+	coundEdit, er := b.DBPayment.EditStatus(context.TODO(), payment.PaymentId, his, structs.PaymentApproved)
+	if er != nil {
+		fmt.Println("[RegisterApprovedPayment] (BLogic): Payment", CPPayment.InvoiceId, "UpdatePayment error:", er.Error())
+		return []byte("UpdatePayment error")
+	}
+	if coundEdit == 0 {
+		fmt.Println("[RegisterApprovedPayment] (BLogic): Payment", CPPayment.InvoiceId, "cound update is zero")
+		return []byte("cound update is zero")
+	}
+	if payment.UserId != 0 {
+		addRes, errr := b.addUserCourse(payment.UserId, payment.PayCourses)
+		if !addRes {
+			fmt.Println("[RegisterApprovedPayment] (add user course) error:", errr.Error())
+			return []byte("add user course error")
+		}
+	}
+
+	return []byte("{\"code\":0}")
+}
+
+func ComputeHmac256(message []byte) string {
+	key := []byte(CpSecret)
+	h := hmac.New(sha256.New, key)
+	h.Write(message)
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }

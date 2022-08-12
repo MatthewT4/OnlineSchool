@@ -4,9 +4,15 @@ import (
 	"OnlineSchool/internal/blogic"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
-	"log"
+	"golang.org/x/crypto/acme/autocert"
 	"net/http"
-	"time"
+)
+
+const (
+	Domain     string = "https://lk.lyc15.ru"
+	ServDomain string = "serv.lyc15.ru"
+	//Domain string = "http://localhost:3000"
+	//ServDomain string = "localhost"
 )
 
 type Router struct {
@@ -19,6 +25,11 @@ func NewRouter(db *mongo.Database) *Router {
 
 func (r *Router) Start() {
 	ro := mux.NewRouter()
+
+	cloudPaymentRou := ro.PathPrefix("/pay_serv").Subrouter()
+	cloudPaymentRou.HandleFunc("/check", r.CheckPayment)
+	cloudPaymentRou.HandleFunc("/register_approved_pay", r.RegisterApprovedPayment)
+
 	rAuth := ro.PathPrefix("/auth").Subrouter()
 	rAuth.HandleFunc("/login", r.Login)
 	rService := ro.PathPrefix("/service").Subrouter()
@@ -42,14 +53,14 @@ func (r *Router) Start() {
 	rou.HandleFunc("/invitation_vk_link", r.InvitationLinkVkGroup)
 	rou.Use(r.UserAuthentication)
 
-	//http.Serve(autocert.NewListener("serv.lyc15.ru"), ro)
+	http.Serve(autocert.NewListener("serv.lyc15.ru"), ro)
 	//http.Serve(ro)
-	srv := &http.Server{
+	/*srv := &http.Server{
 		Handler: ro,
 		Addr:    ":80",
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	log.Fatal(srv.ListenAndServe())
+	log.Fatal(srv.ListenAndServe())*/
 }
