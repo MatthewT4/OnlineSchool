@@ -55,12 +55,12 @@ func (r *Router) Start() {
 
 	http.Serve(autocert.NewListener("serv.lyc15.ru"), ro)
 	//http.Serve(ro)
-	/*srv := &http.Server{
-		Handler: ro,
-		Addr:    ":80",
-		// Good practice: enforce timeouts for servers you create!
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
-	}
-	log.Fatal(srv.ListenAndServe())*/
+	//srv := &http.Server{
+	//	Handler: ro,
+	//	Addr:    ":80",
+	//	// Good practice: enforce timeouts for servers you create!
+	//	WriteTimeout: 15 * time.Second,
+	//	ReadTimeout:  15 * time.Second,
+	//}
+	//log.Fatal(srv.ListenAndServe())
 }

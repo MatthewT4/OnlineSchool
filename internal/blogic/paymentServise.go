@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -26,8 +27,11 @@ func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 		Price                 float64   `json:"price"`
 		Name                  string    `json:"name"`
 		PeriodId              int       `json:"period_id"`
-		AvailableBuyAllPeriod bool      `json:"buy_all_period"`
-		PriceAllPeriod        float64   `json:"price_all_period"`
+		AvailableBuyAllPeriod bool      `json:"buy_all_periods"`
+		PriceAllPeriod        float64   `json:"price_all_periods"`
+		EndAllPeriods         time.Time `json:"end_all_periods"`
+		DiscountAllPers       float64   `json:"discount_all_pers"`
+		DiscountThePer        float64   `json:"discount_the_per"`
 	}
 	var retStruct struct {
 		UserCourses      []course `json:"user_courses,omitempty"`
@@ -49,10 +53,22 @@ func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 				if er != nil {
 					continue
 				}
-
+				countAwaiPer := 0
+				var PriceAllAwailPerWODiscount float64
+				PriceAllAwailPerWODiscount = 0
+				var vr course
+				var flagSetEndAllPer = false
+				vr.AvailableBuyAllPeriod = false
 				for _, v := range cour.PaymentPeriods {
+					if v.PeriodId > maxPeriodId {
+						countAwaiPer += 1
+						PriceAllAwailPerWODiscount += v.Price
+						if flagSetEndAllPer == false || vr.EndAllPeriods.Before(v.EndDate) {
+							flagSetEndAllPer = true
+							vr.EndAllPeriods = v.EndDate
+						}
+					}
 					if v.PeriodId == maxPeriodId+1 {
-						var vr course
 						vr.Name = cour.NameCourse
 						vr.Price = v.Price
 						vr.PeriodId = v.PeriodId
@@ -60,9 +76,18 @@ func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 						vr.PeriodEnd = v.EndDate
 						vr.CourseId = val.CourseId
 						//masAddCourseId = append(masAddCourseId, val.CourseId)
-						retStruct.UserCourses = append(retStruct.UserCourses, vr)
 					}
 				}
+
+				if vr.Name != "" {
+					if countAwaiPer*100/len(cour.PaymentPeriods) >= 70 {
+						vr.AvailableBuyAllPeriod = true
+						vr.PriceAllPeriod = math.Floor(PriceAllAwailPerWODiscount - 0.15*PriceAllAwailPerWODiscount)
+						vr.DiscountAllPers = PriceAllAwailPerWODiscount - vr.PriceAllPeriod
+					}
+					retStruct.UserCourses = append(retStruct.UserCourses, vr)
+				}
+
 				masAddCourseId = append(masAddCourseId, val.CourseId)
 			}
 		}
@@ -70,19 +95,38 @@ func (b *BLogic) GetActivePaymentsPeriod(userId int64) (int, []byte) {
 	avalCourse, e := b.DBCourse.GetAvailableCourses(context.TODO(), "ege", masAddCourseId)
 	if e == nil {
 		for _, val := range avalCourse {
+			var vr course
+			countAwaiPer := 0
+			var PriceAllAwailPerWODiscount float64
+			PriceAllAwailPerWODiscount = 0
+			vr.AvailableBuyAllPeriod = false
+			flagSetEndAllPer := false
 			for _, v := range val.PaymentPeriods {
-				if (v.PeriodId == 1 && v.EndDate.After(time.Now())) || (v.StartDate.Before(time.Now()) && v.EndDate.After(time.Now())) {
-					var vr course
+				if flagSetEndAllPer == false || vr.EndAllPeriods.Before(v.EndDate) {
+					flagSetEndAllPer = true
+					vr.EndAllPeriods = v.EndDate
+				}
+				if v.EndDate.After(time.Now().Add(time.Hour * 24 * 5)) {
+					countAwaiPer += 1
+					PriceAllAwailPerWODiscount += v.Price
+				}
+				if (v.PeriodId == 1 && v.EndDate.After(time.Now().Add(time.Hour*24*5))) || (v.StartDate.Before(time.Now().Add(time.Hour*24*5)) && v.EndDate.After(time.Now().Add(time.Hour*24*5))) {
 					vr.Name = val.NameCourse
 					vr.PeriodId = v.PeriodId
 					vr.PeriodStart = v.StartDate
 					vr.PeriodEnd = v.EndDate
 					vr.CourseId = val.CourseId
 					vr.Price = v.Price
-					retStruct.AvailableCourses = append(retStruct.AvailableCourses, vr)
-					break
+					//retStruct.AvailableCourses = append(retStruct.AvailableCourses, vr)
+					//break
 				}
 			}
+			if countAwaiPer*100/len(val.PaymentPeriods) >= 70 {
+				vr.AvailableBuyAllPeriod = true
+				vr.PriceAllPeriod = math.Floor(PriceAllAwailPerWODiscount - 0.15*PriceAllAwailPerWODiscount)
+				vr.DiscountAllPers = PriceAllAwailPerWODiscount - vr.PriceAllPeriod
+			}
+			retStruct.AvailableCourses = append(retStruct.AvailableCourses, vr)
 		}
 	}
 	re, erro := json.Marshal(&retStruct)
@@ -225,7 +269,7 @@ func (b *BLogic) checkOpportunityToBuyCourse(courseId int, periodIds []int, user
 			if val.PeriodId == 1 {
 				return true, 200
 			}
-			if val.StartDate.Before(time.Now()) && val.EndDate.After(time.Now()) {
+			if val.StartDate.Before(time.Now().Add(time.Hour*24*5)) && val.EndDate.After(time.Now().Add(time.Hour*24*5)) {
 				return true, 200
 			}
 			return false, 400
@@ -253,7 +297,6 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 	if userId != -1 {
 		payment.UserId = userId
 	}
-
 	for _, val := range buy {
 		course, err := b.DBCourse.GetCourse(context.TODO(), val.CourseId)
 		if err != nil {
@@ -308,7 +351,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 				}
 
 				for _, v := range course.PaymentPeriods {
-					if v.EndDate.After(time.Now()) { //EndDate > time.Now
+					if v.EndDate.After(time.Now().Add(time.Hour * 24 * 5)) { //EndDate > time.Now
 						courseBuy.Periods = append(courseBuy.Periods, v.PeriodId)
 						courseBuy.TotalPriceWithoutDiscount += v.Price
 						courseBuy.TotalPrice += v.Price
@@ -318,7 +361,8 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 					return 400, []byte("request error"), http.Cookie{}
 				}
 			}
-
+			courseBuy.TotalPrice = math.Floor(courseBuy.TotalPriceWithoutDiscount - 0.15*courseBuy.TotalPriceWithoutDiscount)
+			courseBuy.TotalPriceWithoutDiscount = math.Floor(courseBuy.TotalPriceWithoutDiscount - 0.15*courseBuy.TotalPriceWithoutDiscount)
 		} else {
 			if userId != -1 {
 				userCourse, er := b.DBUser.GetCourses(context.TODO(), userId)
@@ -356,7 +400,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 					return 400, []byte("request error"), http.Cookie{}
 				}
 				for _, v := range course.PaymentPeriods {
-					if v.PeriodId == val.Periods[0] && v.EndDate.After(time.Now()) {
+					if v.PeriodId == val.Periods[0] && v.EndDate.After(time.Now().Add(time.Hour*24*5)) {
 						courseBuy.Periods = append(courseBuy.Periods, v.PeriodId)
 						courseBuy.TotalPriceWithoutDiscount += v.Price
 						courseBuy.TotalPrice += v.Price
@@ -367,7 +411,7 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 		if len(courseBuy.Periods) == 0 {
 			return 400, []byte("periods incorrect"), http.Cookie{}
 		}
-		payment.TotalAmount += courseBuy.TotalPriceWithoutDiscount
+		payment.TotalAmount += courseBuy.TotalPrice
 		payment.PayCourses = append(payment.PayCourses, courseBuy)
 	}
 	if len(payment.PayCourses) == 0 {
@@ -443,11 +487,12 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 			year := 2022
 			for _, per := range course.PaymentPeriods {
 				if per.PeriodId == rVal.Periods[0] {
-					month = int(per.StartDate.Month())
-					year = per.StartDate.Year()
+					month = int(per.StartDate.Local().Month())
+					year = per.StartDate.Local().Year()
 				}
 			}
-			vr.Label = "Оплата доступа к разделу " + course.NameCourse + " на " + monthConst[month] + " " + strconv.Itoa(year) + " года"
+
+			vr.Label = "Оплата доступа к разделу " + course.NameCourse + " на " + monthConst[month-1] + " " + strconv.Itoa(year) + " года"
 		} else {
 			startMonth := 1
 			startYear := 2022
@@ -465,15 +510,15 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 			}
 			for _, per := range course.PaymentPeriods {
 				if per.PeriodId == minPer {
-					startMonth = int(per.StartDate.Month())
-					startYear = per.StartDate.Year()
+					startMonth = int(per.StartDate.Local().Month())
+					startYear = per.StartDate.Local().Year()
 				}
 				if per.PeriodId == maxPer {
-					endMonth = int(per.StartDate.Month())
-					endYear = per.StartDate.Year()
+					endMonth = int(per.StartDate.Local().Month())
+					endYear = per.StartDate.Local().Year()
 				}
 			}
-			vr.Label = "Оплата доступа к разделу " + course.NameCourse + " на " + monthConst[startMonth] + " " + strconv.Itoa(startYear) + " года - " + monthConst[endMonth] + " " + strconv.Itoa(endYear) + " года"
+			vr.Label = "Оплата доступа к разделу " + course.NameCourse + " на " + monthConst[startMonth-1] + " " + strconv.Itoa(startYear) + " года - " + monthConst[endMonth-1] + " " + strconv.Itoa(endYear) + " года"
 		}
 		data.ReceiptRet.Items = append(data.ReceiptRet.Items, vr)
 	}
@@ -534,14 +579,6 @@ func (b *BLogic) LinkingPaymentToUser(userId int64, paymentId string) (int, stri
 }
 
 //CloudPayments servises
-/*
-func (b *BLogic) addedNewHistoryEntry(paymentId string, Entry string) bool {
-	payment, err := b.DBPayment.FindPayment(context.TODO(), paymentId)
-	if err != nil {
-		return false
-	}
-	payment.
-}*/
 
 func (b *BLogic) CheckPayment(CPPayment structs.CloudPaymentReq, data []byte, contextHmac string) []byte {
 	//fmt.Println("[CheckPayment] (ComputeHmac256):",ComputeHmac256(data))
