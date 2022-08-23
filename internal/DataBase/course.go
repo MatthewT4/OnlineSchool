@@ -14,6 +14,7 @@ type CourseDB struct {
 type ICourseDB interface {
 	GetCourse(ctx context.Context, CourseId int) (structs.Course, error)
 	GetAvailableCourses(ctx context.Context, typ string, removeCoursesId []int) ([]structs.Course, error)
+	GetIntensive(ctx context.Context, courseTeg string) (structs.Course, error)
 }
 
 func NewCourseDB(db *mongo.Database) *CourseDB {
@@ -64,4 +65,14 @@ func (c *CourseDB) GetAvailableCourses(ctx context.Context, typ string, removeCo
 	}
 	cursor.Close(context.TODO())
 	return ret, nil
+}
+
+func (c *CourseDB) GetIntensive(ctx context.Context, courseTeg string) (structs.Course, error) {
+	filter := bson.M{"teg_course": courseTeg}
+	var course structs.Course
+	err := c.collection.FindOne(ctx, filter).Decode(&course)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return course, err
 }

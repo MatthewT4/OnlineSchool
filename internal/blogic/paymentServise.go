@@ -278,7 +278,7 @@ func (b *BLogic) checkOpportunityToBuyCourse(courseId int, periodIds []int, user
 	return false, 400
 }
 
-func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoCodes string) (int, []byte, http.Cookie) {
+func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoCode string) (int, []byte, http.Cookie) {
 	//check valid request
 	fmt.Println("UID:", userId)
 	for _, val := range buy {
@@ -429,11 +429,61 @@ func (b *BLogic) CreatePayment(buy []structs.PayCourseType, userId int64, promoC
 	vrHis.ChangeDate = time.Now()
 	payment.ChangeHistory = append(payment.ChangeHistory, vrHis)
 	payment.Status = structs.PreApproved*/
+	promoFlag := false
+	if userId != -1 && promoCode != "" {
+		resultCode, _, promoDisc := b.applyDiscount(promoCode, payment.TotalAmount, userId)
+		if resultCode == 0 {
+			/*payment.TotalAmount = promoAmount
+			payment.DiscountAmount = promoDisc
+			*/
+			seilOneCourse := math.Ceil(promoDisc/float64(len(payment.PayCourses))*100) / 100
+			sumNevostr := 0.00
+			for i := 0; i < len(payment.PayCourses); i++ {
+				if payment.PayCourses[i].TotalPrice >= seilOneCourse {
+					payment.PayCourses[i].TotalPrice -= seilOneCourse
+				} else {
+					sumNevostr += seilOneCourse - payment.PayCourses[i].TotalPrice
+					payment.PayCourses[i].TotalPrice = 0
+				}
+				if sumNevostr > 0 && payment.PayCourses[i].TotalPrice != 0 {
+					if payment.PayCourses[i].TotalPrice >= sumNevostr {
+						payment.PayCourses[i].TotalPrice -= sumNevostr
+						sumNevostr = 0
+					} else {
+						sumNevostr -= payment.PayCourses[i].TotalPrice
+						payment.PayCourses[i].TotalPrice = 0
+					}
+				}
+			}
+			payment.TotalAmount -= seilOneCourse * float64(len(payment.PayCourses))
+			payment.DiscountAmount = seilOneCourse * float64(len(payment.PayCourses))
+
+			var vrPromo structs.Discount
+			vrPromo.TypeDiscount = 0
+			vrPromo.DisAmount = payment.TotalAmount
+			payment.Discounts = append(payment.Discounts, vrPromo)
+			promoFlag = true
+		}
+	}
 
 	payId, e := b.DBPayment.AddPayment(context.TODO(), payment)
 	if e != nil {
 		fmt.Println(e.Error())
 		return 500, []byte("server error"), http.Cookie{}
+	}
+
+	if promoFlag {
+		var vrHisPromo structs.ApplyPromoCode
+		vrHisPromo.PromoCode = promoCode
+		vrHisPromo.PaymentId = payId
+		vrHisPromo.Owner = userId
+		vrHisPromo.ApplicationTime = time.Now()
+
+		errAddHisPromo := b.DBAppliedPromoCode.AddHistoryElem(context.TODO(), vrHisPromo)
+		if errAddHisPromo != nil {
+			fmt.Println("[CreatePayment] (AddHistoryElem) error:", errAddHisPromo.Error())
+			return 500, []byte("server error"), http.Cookie{}
+		}
 	}
 
 	type ReceiptItem struct { //товар в чеке
@@ -676,4 +726,90 @@ func ComputeHmac256(message []byte) string {
 	h := hmac.New(sha256.New, key)
 	h.Write(message)
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
+// applyDiscount return code, amount, discount ||  code: 0=ok 1=incorrect 2=serverError 3=alreadyUsed
+func (b *BLogic) applyDiscount(promocode string, amount float64, userId int64) (int, float64, float64) {
+	promoCode, err := b.DBPromoCode.GetPromoCode(context.TODO(), promocode)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return 1, 0, 0
+		}
+		fmt.Println("[applyDiscount] (GetPromoCode) err:", err.Error())
+		return 2, 0, 0
+	}
+	if promoCode.Owner != 0 {
+		if promoCode.Owner != userId {
+			return 1, 0, 0
+		}
+	}
+	if promoCode.ValidFrom.After(time.Now()) || promoCode.ValidUntil.Before(time.Now()) {
+		return 1, 0, 0
+	}
+	// Проверка если количество использований не бесконечно!!!!!
+	if !promoCode.Infinite {
+		return 1, 0, 0
+	}
+	if !promoCode.MultipleUses {
+		PCUsesArray, er := b.DBAppliedPromoCode.GetUserAppliedThePC(context.TODO(), userId, promocode)
+		if er != nil {
+			if er != mongo.ErrNoDocuments {
+				fmt.Println("[applyDiscount] (GetUserAppliedThePC) err:", er.Error())
+				return 2, 0, 0
+			}
+		}
+
+		if len(PCUsesArray) > 0 {
+			for _, val := range PCUsesArray {
+				payment, e := b.DBPayment.FindPayment(context.TODO(), val.PaymentId)
+				if e != nil {
+					fmt.Println("[applyDiscount] (FindPayment) err:", e.Error())
+					return 2, 0, 0
+				}
+				if payment.Status == structs.Registered || payment.Status == structs.PaymentRejected {
+					continue
+				}
+				return 3, 0, 0
+			}
+		}
+	}
+
+	if promoCode.TypeDiscount == structs.FixedDiscount {
+		if amount <= promoCode.DisAmount {
+			if amount < 1 {
+				return 0, 0, amount
+			}
+			return 0, 1, amount - 1
+		}
+		return 0, amount - promoCode.DisAmount, promoCode.DisAmount
+	}
+	return 1, 0, 0
+}
+
+func (b *BLogic) CheckAmountPromoCodes(userId int64, amount float64, promoCode string) (int, []byte) {
+	code, finAmount, discount := b.applyDiscount(promoCode, amount, userId)
+	var ret struct {
+		Message  string  `json:"message"`
+		Amount   float64 `json:"amount"`
+		Discount float64 `json:"discount"`
+	}
+	if code == 0 {
+		ret.Discount = discount
+		ret.Amount = finAmount
+	}
+	if code == 1 {
+		ret.Message = "Некорректный промокод"
+	}
+	if code == 2 {
+		ret.Message = "Упс, похоже система промокодов сейчас недоступна"
+	}
+	if code == 3 {
+		ret.Message = "Упс, похоже промокод уже был применён ранее"
+	}
+
+	jsonRet, er := json.Marshal(&ret)
+	if er != nil {
+		return 500, []byte("Server error")
+	}
+	return 200, jsonRet
 }

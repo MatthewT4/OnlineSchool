@@ -154,3 +154,85 @@ func (b *BLogic) GetInvitationLinkVkGroup(userId int64, courseId int) (int, []by
 	}
 	return 200, data
 }
+
+func (b *BLogic) GetIntensive(tagIntensive string, userId int64) (int, []byte) {
+	var data struct {
+		NameIntensive string `json:"name_intensive"`
+		UserIsLogged  bool   `json:"user_is_logged"`
+	}
+	intensive, err := b.DBCourse.GetIntensive(context.TODO(), tagIntensive)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return 400, []byte("Course not found")
+		}
+		return 500, []byte("Server error")
+	}
+	data.NameIntensive = intensive.NameCourse
+	data.UserIsLogged = false
+	uCourses, er := b.DBUser.GetCourses(context.TODO(), userId)
+	if er != nil {
+		for _, val := range uCourses {
+			if val.CourseId == intensive.CourseId {
+				data.UserIsLogged = true
+				break
+			}
+		}
+	}
+	jsoon, e := json.Marshal(data)
+	if e != nil {
+		return 500, []byte("Server error")
+	}
+	return 200, jsoon
+}
+
+func (b *BLogic) AddUserIntensive(tagIntensive string, userId int64) (int, string) {
+	intensive, err := b.DBCourse.GetIntensive(context.TODO(), tagIntensive)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return 400, "Course not found"
+		}
+		return 500, "Server error"
+	}
+	if b.checkUserToIntensive(intensive.CourseId, userId) {
+		return 208, "User Connection to intensive alreary"
+	}
+	var pushCourse []structs.UserCourse
+	var vr structs.UserCourse
+	vr.Active = true
+	vr.CourseId = intensive.CourseId
+	vr.HeartCount = 5
+
+	var masBuyVr []int
+	masBuyVr = append(masBuyVr, 1)
+	vr.BuyPeriod = masBuyVr
+	vr.Freeze = true
+	vr.FreezingDay = 31
+	pushCourse = append(pushCourse, vr)
+
+	uCourses, err := b.DBUser.GetCourses(context.TODO(), userId)
+	if err != nil {
+		return 500, "Server error"
+	}
+	pushCourse = append(pushCourse, uCourses...)
+	modCount, er := b.DBUser.EditUserCourses(context.TODO(), userId, pushCourse)
+	if er != nil {
+		return 500, "Server error"
+	}
+	if modCount == 0 {
+		return 500, "Server error"
+	}
+	return 200, "OK"
+}
+
+func (b *BLogic) checkUserToIntensive(courseId int, userId int64) bool {
+	uCourses, err := b.DBUser.GetCourses(context.TODO(), userId)
+	if err != nil {
+		return false
+	}
+	for _, val := range uCourses {
+		if val.CourseId == courseId {
+			return true
+		}
+	}
+	return false
+}

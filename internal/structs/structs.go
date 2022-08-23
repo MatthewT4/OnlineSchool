@@ -146,10 +146,18 @@ type PromoCode struct {
 	PromoCode    string    `bson:"promo_code"`
 	TypeDiscount int       `bson:"type_discount"`
 	DisAmount    float64   `bson:"discount_amount"`
-	Infinite     bool      `bson:"infinite"` //ограниченный по количеству или нет (true == неограниченный)
+	Infinite     bool      `bson:"infinite"`      //ограниченный по количеству или нет (true == неограниченный)
+	MultipleUses bool      `bson:"multiple_uses"` // может ли пользовователь использовать промокод несколько раз (true == да)
 	NumberUses   int       `bson:"number_uses,omitempty"`
 	Uses         int       `bson:"uses,omitempty"`
 	ValidFrom    time.Time `bson:"valid_from"`  //действует с
 	ValidUntil   time.Time `bson:"valid_until"` //действует до
 	Owner        int64     `bson:"owner,omitempty"`
+}
+
+type ApplyPromoCode struct {
+	PromoCode       string    `bson:"promo_code"`
+	Owner           int64     `bson:"owner"`
+	ApplicationTime time.Time `bson:"application_time"`
+	PaymentId       string    `bson:"payment_id"`
 }

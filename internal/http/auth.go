@@ -90,3 +90,19 @@ func (rou *Router) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(d)
 }
+
+func (rou *Router) CheckAuth(w http.ResponseWriter, r *http.Request) {
+
+	cookie, er := r.Cookie("authToken")
+	if er != nil {
+		w.Write([]byte("{\"status\":false}"))
+		return
+	}
+
+	_, _, err := rou.BLogic.Authentication(cookie.Value)
+	if err != nil {
+		w.Write([]byte("{\"status\":false}"))
+		return
+	}
+	w.Write([]byte("{\"status\":true}"))
+}

@@ -35,9 +35,11 @@ func (r *Router) Start() {
 	rService := ro.PathPrefix("/service").Subrouter()
 	rService.HandleFunc("/available_periods", r.AvailablePaymentPeriods)
 	rService.HandleFunc("/create_payment", r.CreatePayment)
+	rService.HandleFunc("/check_auth", r.CheckAuth)
 	rService.Use(r.servProm)
 
 	rou := ro.PathPrefix("/").Subrouter()
+	rou.HandleFunc("/cal_amount_in_promo_code", r.CalculateTotalAmountInPromoCode)
 	rou.HandleFunc("/get_courses", r.GetCourses)
 	rou.HandleFunc("/get_next_webinars", r.GetNextWebinars)
 	rou.HandleFunc("/get_today_webinars", r.GetTodayWebinars)
@@ -54,13 +56,13 @@ func (r *Router) Start() {
 	rou.Use(r.UserAuthentication)
 
 	http.Serve(autocert.NewListener("serv.lyc15.ru"), ro)
-	//http.Serve(ro)
-	//srv := &http.Server{
-	//	Handler: ro,
-	//	Addr:    ":80",
-	//	// Good practice: enforce timeouts for servers you create!
-	//	WriteTimeout: 15 * time.Second,
-	//	ReadTimeout:  15 * time.Second,
-	//}
-	//log.Fatal(srv.ListenAndServe())
+	/*
+		srv := &http.Server{
+			Handler: ro,
+			Addr:    ":80",
+			// Good practice: enforce timeouts for servers you create!
+			WriteTimeout: 15 * time.Second,
+			ReadTimeout:  15 * time.Second,
+		}
+		log.Fatal(srv.ListenAndServe())*/
 }

@@ -84,7 +84,7 @@ func (rou *Router) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		blData = append(blData, vr)
 	}
 
-	code, mes, cookiee := rou.BLogic.CreatePayment(blData, userId, "")
+	code, mes, cookiee := rou.BLogic.CreatePayment(blData, userId, data.PromoCode)
 
 	if code != 200 {
 		http.Error(w, string(mes), code)
@@ -295,4 +295,22 @@ func (rou *Router) RegisterApprovedPayment(w http.ResponseWriter, r *http.Reques
 	w.Write(rou.BLogic.RegisterApprovedPayment(payment, body, hmacHead))
 	//w.Write([]byte("{\"code\":0}"))
 	return
+}
+
+func (rou *Router) CalculateTotalAmountInPromoCode(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value(UserId).(int64)
+	strAmount := r.URL.Query().Get("amount")
+	amount, err := strconv.ParseFloat(strAmount, 64)
+	if err != nil {
+		http.Error(w, "amount incorrect", 400)
+		return
+	}
+
+	promoCode := r.URL.Query().Get("promo_code")
+
+	code, mes := rou.BLogic.CheckAmountPromoCodes(userId, amount, promoCode)
+	if code != 200 {
+		http.Error(w, "Server error", 500)
+	}
+	w.Write(mes)
 }
