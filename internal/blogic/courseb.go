@@ -155,6 +155,17 @@ func (b *BLogic) GetInvitationLinkVkGroup(userId int64, courseId int) (int, []by
 	return 200, data
 }
 
+/*
+func (b *BLogic) LinkToIntensive(vkUserId int64, firstName string, lastName string, nameIntensive string) int {
+	user, err := b.DBUser.GetUser(context.TODO(), vkUserId)
+	if err != nil {
+		if err != mongo.ErrNoDocuments {
+			return 500
+		}
+
+	}
+}*/
+
 func (b *BLogic) GetIntensive(tagIntensive string, userId int64) (int, []byte) {
 	var data struct {
 		NameIntensive string `json:"name_intensive"`
@@ -170,7 +181,7 @@ func (b *BLogic) GetIntensive(tagIntensive string, userId int64) (int, []byte) {
 	data.NameIntensive = intensive.NameCourse
 	data.UserIsLogged = false
 	uCourses, er := b.DBUser.GetCourses(context.TODO(), userId)
-	if er != nil {
+	if er == nil {
 		for _, val := range uCourses {
 			if val.CourseId == intensive.CourseId {
 				data.UserIsLogged = true

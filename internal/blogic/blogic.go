@@ -48,6 +48,7 @@ type IBLogic interface {
 	Authentication(token string) (int64, int, error)
 	SubmitHomework(userId int64, homeworkId int, answers []structs.HomeworkTask) (int, string)
 	GetIntensive(tagIntensive string, userId int64) (int, []byte)
+	AddUserIntensive(tagIntensive string, userId int64) (int, string)
 
 	GetActivePaymentsPeriod(userId int64) (int, []byte)
 	CreatePayment(buy []structs.PayCourseType, userId int64, promoCodes string) (int, []byte, http.Cookie)

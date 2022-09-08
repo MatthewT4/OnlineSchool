@@ -4,15 +4,16 @@ import (
 	"OnlineSchool/internal/blogic"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
-	"golang.org/x/crypto/acme/autocert"
+	"log"
 	"net/http"
+	"time"
 )
 
 const (
-	Domain     string = "https://lk.lyc15.ru"
-	ServDomain string = "serv.lyc15.ru"
-	//Domain string = "http://localhost:3000"
-	//ServDomain string = "localhost"
+	//Domain     string = "https://lk.lyc15.ru"
+	//ServDomain string = "serv.lyc15.ru"
+	Domain     string = "http://localhost:3000"
+	ServDomain string = "localhost"
 )
 
 type Router struct {
@@ -53,16 +54,19 @@ func (r *Router) Start() {
 	rou.HandleFunc("/linking_payment", r.LinkingPaymentToUser)
 	rou.HandleFunc("/connecting_groups", r.ConnectingCourseGroups)
 	rou.HandleFunc("/invitation_vk_link", r.InvitationLinkVkGroup)
+	rou.HandleFunc("/get_intensive", r.GetIntensive)
+	rou.HandleFunc("/linking_intensive", r.AddUserIntensive)
+	rou.HandleFunc("/auto_linking_intensive", r.AddUserIntensive)
 	rou.Use(r.UserAuthentication)
 
-	http.Serve(autocert.NewListener("serv.lyc15.ru"), ro)
-	/*
-		srv := &http.Server{
-			Handler: ro,
-			Addr:    ":80",
-			// Good practice: enforce timeouts for servers you create!
-			WriteTimeout: 15 * time.Second,
-			ReadTimeout:  15 * time.Second,
-		}
-		log.Fatal(srv.ListenAndServe())*/
+	//http.Serve(autocert.NewListener("serv.lyc15.ru"), ro)
+
+	srv := &http.Server{
+		Handler: ro,
+		Addr:    ":80",
+		// Good practice: enforce timeouts for servers you create!
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+	log.Fatal(srv.ListenAndServe())
 }
